@@ -46,12 +46,33 @@ app.use('/api/comments', require('./routes/comments'));
 app.use('/api/likes', require('./routes/likes'));
 app.use('/api/follows', require('./routes/follows'));
 
+// Root route - API welcome page
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Blogger Platform API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth (register, login)',
+      posts: '/api/posts',
+      users: '/api/users',
+      comments: '/api/comments',
+      likes: '/api/likes',
+      follows: '/api/follows'
+    },
+    documentation: 'See README.md for full API documentation',
+    status: 'Running'
+  });
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     message: 'Blogger Platform API is running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
   });
 });
 
