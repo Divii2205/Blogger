@@ -1,7 +1,7 @@
 import axios from 'axios';
 
-// For local development, use localhost. For production, use Render URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// API URL - uses environment variable or defaults to Render deployment
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://blogger-l1tj.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
