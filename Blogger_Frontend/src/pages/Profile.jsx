@@ -126,26 +126,30 @@ const Profile = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Profile Header */}
         <Card className="mb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:space-x-6">
-            <Avatar
-              src={user.avatar}
-              alt={user.fullName}
-              size="2xl"
-              className="mx-auto md:mx-0 mb-4 md:mb-0"
-            />
+          <div className="flex flex-col md:flex-row md:items-start gap-5">
+            {/* Avatar */}
+            <div className="flex justify-center md:justify-start shrink-0">
+              <Avatar
+                src={user.avatar}
+                alt={user.fullName}
+                size="2xl"
+              />
+            </div>
 
-            <div className="flex-1 text-center md:text-left">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                <div>
+            {/* Profile Info */}
+            <div className="flex-1 text-center md:text-left space-y-2">
+              {/* Name and Button */}
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+                <div className="space-y-1">
                   <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
                     {user.fullName}
                   </h1>
-                  <p className="text-neutral-600 dark:text-neutral-400">
+                  <p className="text-lg text-neutral-500 dark:text-neutral-400">
                     @{user.username}
                   </p>
                 </div>
 
-                <div className="mt-4 md:mt-0">
+                <div className="flex justify-center md:justify-start">
                   {isOwnProfile ? (
                     <Button
                       variant="outline"
@@ -165,12 +169,13 @@ const Profile = () => {
               </div>
 
               {user.bio && (
-                <p className="text-neutral-700 dark:text-neutral-300 mb-4">
+                <p className="text-neutral-700 dark:text-neutral-300 text-base leading-relaxed">
                   {user.bio}
                 </p>
               )}
 
-              <div className="flex items-center justify-center md:justify-start space-x-6 text-sm">
+              {/* Location and Website */}
+              <div className="flex items-center justify-center md:justify-start flex-wrap gap-4 text-sm">
                 {user.location && (
                   <div className="flex items-center space-x-1 text-neutral-600 dark:text-neutral-400">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

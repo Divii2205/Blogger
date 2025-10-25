@@ -89,11 +89,11 @@ const PostCard = ({ post, onLikeUpdate }) => {
 
         {/* Featured Image */}
         {post.featuredImage && (
-          <div className="mb-4 -mx-6 -mt-6">
+          <div className="mb-4 -mx-6">
             <img
               src={post.featuredImage}
               alt={post.title}
-              className="w-full h-48 object-cover rounded-t-xl"
+              className="w-full h-56 object-cover rounded-lg"
             />
           </div>
         )}

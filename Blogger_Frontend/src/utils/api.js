@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// API URL - uses environment variable or defaults to Render deployment
+// For local development, use localhost. For production, use Render URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://blogger-l1tj.onrender.com/api';
 
 const api = axios.create({
@@ -28,11 +28,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Only logout on specific 401 errors (not CORS or network errors)
-    if (error.response?.status === 401 && error.response?.data?.message) {
-      // Check if it's an actual auth error, not a CORS or network issue
-      const authErrors = ['Invalid token', 'Token expired', 'No token provided', 'Not authorized'];
-      if (authErrors.some(msg => error.response.data.message.includes(msg))) {
+    // Only logout on actual authentication errors (401), not authorization errors (403)
+    if (error.response?.status === 401) {
+      const message = error.response?.data?.message || '';
+      // Only logout for actual auth token issues
+      const authTokenErrors = ['Invalid token', 'Token expired', 'No token', 'token is invalid', 'jwt expired'];
+      
+      if (authTokenErrors.some(msg => message.toLowerCase().includes(msg.toLowerCase()))) {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         window.location.href = '/login';
