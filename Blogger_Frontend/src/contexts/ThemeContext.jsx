@@ -12,23 +12,22 @@ export const useTheme = () => {
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
+    // Check localStorage first
     const stored = localStorage.getItem('theme');
     if (stored) return stored;
     
-    // Check system preference
-    if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      return 'dark';
-    }
+    // Default to light mode if no preference stored
     return 'light';
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
     
+    // Remove both classes first to ensure clean state
+    root.classList.remove('dark', 'light');
+    
     if (theme === 'dark') {
       root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
     }
     
     localStorage.setItem('theme', theme);
