@@ -25,6 +25,8 @@ const PostCard = ({ post, onLikeUpdate }) => {
     if (isLiking) return;
 
     setIsLiking(true);
+    const previousIsLiked = isLiked;
+    const previousLikesCount = likesCount;
     const newIsLiked = !isLiked;
     const newLikesCount = newIsLiked ? likesCount + 1 : likesCount - 1;
 
@@ -33,14 +35,19 @@ const PostCard = ({ post, onLikeUpdate }) => {
     setLikesCount(newLikesCount);
 
     try {
-      await likesAPI.togglePostLike(post._id);
+      const response = await likesAPI.togglePostLike(post._id);
+      // Use server response to ensure accurate state
+      const serverData = response.data.data;
+      setIsLiked(serverData.isLiked);
+      setLikesCount(serverData.likesCount);
+      
       if (onLikeUpdate) {
-        onLikeUpdate(post._id, newIsLiked, newLikesCount);
+        onLikeUpdate(post._id, serverData.isLiked, serverData.likesCount);
       }
     } catch (error) {
       // Revert on error
-      setIsLiked(!newIsLiked);
-      setLikesCount(likesCount);
+      setIsLiked(previousIsLiked);
+      setLikesCount(previousLikesCount);
       console.error('Failed to like post:', error);
     } finally {
       setIsLiking(false);

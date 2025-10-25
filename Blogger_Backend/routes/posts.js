@@ -41,16 +41,21 @@ router.get('/', optionalAuth, async (req, res) => {
     const total = await Post.countDocuments(query);
 
     // Add like status for authenticated users
+    let postsWithLikeStatus = posts;
     if (req.user) {
-      posts.forEach(post => {
-        post.isLiked = post.isLikedBy(req.user._id);
+      postsWithLikeStatus = posts.map(post => {
+        const postObj = post.toObject();
+        postObj.isLiked = post.isLikedBy(req.user._id);
+        return postObj;
       });
+    } else {
+      postsWithLikeStatus = posts.map(post => post.toObject());
     }
 
     res.json({
       success: true,
       data: {
-        posts,
+        posts: postsWithLikeStatus,
         pagination: {
           page,
           limit,
@@ -92,16 +97,21 @@ router.get('/trending', optionalAuth, async (req, res) => {
     .limit(limit);
 
     // Add like status for authenticated users
+    let postsWithLikeStatus = posts;
     if (req.user) {
-      posts.forEach(post => {
-        post.isLiked = post.isLikedBy(req.user._id);
+      postsWithLikeStatus = posts.map(post => {
+        const postObj = post.toObject();
+        postObj.isLiked = post.isLikedBy(req.user._id);
+        return postObj;
       });
+    } else {
+      postsWithLikeStatus = posts.map(post => post.toObject());
     }
 
     res.json({
       success: true,
       data: {
-        posts
+        posts: postsWithLikeStatus
       }
     });
   } catch (error) {
@@ -163,14 +173,16 @@ router.get('/feed', protect, async (req, res) => {
     });
 
     // Add like status
-    posts.forEach(post => {
-      post.isLiked = post.isLikedBy(req.user._id);
+    const postsWithLikeStatus = posts.map(post => {
+      const postObj = post.toObject();
+      postObj.isLiked = post.isLikedBy(req.user._id);
+      return postObj;
     });
 
     res.json({
       success: true,
       data: {
-        posts,
+        posts: postsWithLikeStatus,
         pagination: {
           page,
           limit,
@@ -206,15 +218,16 @@ router.get('/:id', optionalAuth, async (req, res) => {
     // Increment views
     await post.incrementViews();
 
-    // Add like status for authenticated users
+    // Convert to plain object and add like status
+    const postObj = post.toObject();
     if (req.user) {
-      post.isLiked = post.isLikedBy(req.user._id);
+      postObj.isLiked = post.isLikedBy(req.user._id);
     }
 
     res.json({
       success: true,
       data: {
-        post
+        post: postObj
       }
     });
   } catch (error) {
@@ -453,16 +466,21 @@ router.get('/user/:username', optionalAuth, async (req, res) => {
     const total = await Post.countDocuments(query);
 
     // Add like status for authenticated users
+    let postsWithLikeStatus = posts;
     if (req.user) {
-      posts.forEach(post => {
-        post.isLiked = post.isLikedBy(req.user._id);
+      postsWithLikeStatus = posts.map(post => {
+        const postObj = post.toObject();
+        postObj.isLiked = post.isLikedBy(req.user._id);
+        return postObj;
       });
+    } else {
+      postsWithLikeStatus = posts.map(post => post.toObject());
     }
 
     res.json({
       success: true,
       data: {
-        posts,
+        posts: postsWithLikeStatus,
         pagination: {
           page,
           limit,

@@ -21,9 +21,31 @@ const limiter = rateLimit({
 app.use('/api/', limiter);
 
 // CORS configuration
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://localhost:3002',
+  'http://localhost:3003',
+  'http://localhost:3004',
+  'https://blogger-tau-five.vercel.app',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: true,
-  credentials: true
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      callback(null, true); // Still allow for development
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 // Body parsing middleware

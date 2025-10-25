@@ -71,17 +71,25 @@ const PostView = () => {
       return;
     }
 
+    const previousIsLiked = isLiked;
+    const previousLikesCount = likesCount;
     const newIsLiked = !isLiked;
     const newLikesCount = newIsLiked ? likesCount + 1 : likesCount - 1;
 
+    // Optimistic update
     setIsLiked(newIsLiked);
     setLikesCount(newLikesCount);
 
     try {
-      await likesAPI.togglePostLike(id);
+      const response = await likesAPI.togglePostLike(id);
+      // Use server response to ensure accurate state
+      const serverData = response.data.data;
+      setIsLiked(serverData.isLiked);
+      setLikesCount(serverData.likesCount);
     } catch (error) {
-      setIsLiked(!newIsLiked);
-      setLikesCount(likesCount);
+      // Revert on error
+      setIsLiked(previousIsLiked);
+      setLikesCount(previousLikesCount);
       console.error('Failed to like post:', error);
     }
   };
