@@ -53,14 +53,34 @@ const Profile = () => {
       return;
     }
 
+    const previousIsFollowing = isFollowing;
+    const previousFollowersCount = user.followersCount;
+
+    // Optimistic update
+    setIsFollowing(!isFollowing);
+    setUser(prev => ({
+      ...prev,
+      followersCount: isFollowing ? prev.followersCount - 1 : prev.followersCount + 1,
+    }));
+
     try {
-      await followsAPI.toggleFollow(user._id);
-      setIsFollowing(!isFollowing);
+      const response = await followsAPI.toggleFollow(user._id);
+      const serverData = response.data.data;
+      
+      // Update with server data for accuracy
+      setIsFollowing(serverData.isFollowing);
       setUser(prev => ({
         ...prev,
-        followersCount: isFollowing ? prev.followersCount - 1 : prev.followersCount + 1,
+        followersCount: serverData.targetUser.followersCount,
+        followingCount: serverData.targetUser.followingCount
       }));
     } catch (error) {
+      // Revert on error
+      setIsFollowing(previousIsFollowing);
+      setUser(prev => ({
+        ...prev,
+        followersCount: previousFollowersCount,
+      }));
       console.error('Failed to follow user:', error);
     }
   };

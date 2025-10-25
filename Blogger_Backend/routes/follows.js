@@ -44,17 +44,25 @@ router.post('/:userId', protect, async (req, res) => {
         $pull: { followers: currentUserId }
       });
 
-      // Update follow counts
-      await currentUser.updateFollowCounts();
-      await targetUser.updateFollowCounts();
+      // Get fresh user objects and update follow counts
+      const updatedCurrentUser = await User.findById(currentUserId);
+      const updatedTargetUser = await User.findById(targetUserId);
+      
+      await updatedCurrentUser.updateFollowCounts();
+      await updatedTargetUser.updateFollowCounts();
 
       res.json({
         success: true,
         message: 'User unfollowed successfully',
         data: {
           isFollowing: false,
-          followersCount: targetUser.followersCount - 1,
-          followingCount: currentUser.followingCount - 1
+          followersCount: updatedTargetUser.followersCount,
+          followingCount: updatedCurrentUser.followingCount,
+          targetUser: {
+            _id: updatedTargetUser._id,
+            followersCount: updatedTargetUser.followersCount,
+            followingCount: updatedTargetUser.followingCount
+          }
         }
       });
     } else {
@@ -67,17 +75,25 @@ router.post('/:userId', protect, async (req, res) => {
         $addToSet: { followers: currentUserId }
       });
 
-      // Update follow counts
-      await currentUser.updateFollowCounts();
-      await targetUser.updateFollowCounts();
+      // Get fresh user objects and update follow counts
+      const updatedCurrentUser = await User.findById(currentUserId);
+      const updatedTargetUser = await User.findById(targetUserId);
+      
+      await updatedCurrentUser.updateFollowCounts();
+      await updatedTargetUser.updateFollowCounts();
 
       res.json({
         success: true,
         message: 'User followed successfully',
         data: {
           isFollowing: true,
-          followersCount: targetUser.followersCount + 1,
-          followingCount: currentUser.followingCount + 1
+          followersCount: updatedTargetUser.followersCount,
+          followingCount: updatedCurrentUser.followingCount,
+          targetUser: {
+            _id: updatedTargetUser._id,
+            followersCount: updatedTargetUser.followersCount,
+            followingCount: updatedTargetUser.followingCount
+          }
         }
       });
     }

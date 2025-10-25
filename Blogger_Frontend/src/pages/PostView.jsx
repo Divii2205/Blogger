@@ -100,10 +100,31 @@ const PostView = () => {
       return;
     }
 
+    const previousIsFollowing = isFollowing;
+
+    // Optimistic update
+    setIsFollowing(!isFollowing);
+
     try {
-      await followsAPI.toggleFollow(post.author._id);
-      setIsFollowing(!isFollowing);
+      const response = await followsAPI.toggleFollow(post.author._id);
+      const serverData = response.data.data;
+      
+      // Update with server data for accuracy
+      setIsFollowing(serverData.isFollowing);
+      
+      // Update post author's follower count if needed
+      if (post.author) {
+        setPost(prev => ({
+          ...prev,
+          author: {
+            ...prev.author,
+            followersCount: serverData.targetUser.followersCount
+          }
+        }));
+      }
     } catch (error) {
+      // Revert on error
+      setIsFollowing(previousIsFollowing);
       console.error('Failed to follow user:', error);
     }
   };
