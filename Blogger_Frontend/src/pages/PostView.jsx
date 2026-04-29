@@ -426,13 +426,13 @@ const PostView = () => {
                 <img
                   src={post.featuredImage}
                   alt={post.title}
-                  className="w-full h-auto max-h-96 object-cover rounded-lg mb-6"
+                  className="w-full h-auto max-h-96 object-cover rounded-lg mb-10"
                 />
               )}
 
               {/* Tags */}
               {post.tags && post.tags.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-6 mt-10">
+                <div className="flex flex-wrap gap-2 mb-6 mt-4">
                   {post.tags.map((tag, index) => (
                     <Badge key={index} variant="primary">
                       #{tag}

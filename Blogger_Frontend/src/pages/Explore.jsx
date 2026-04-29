@@ -83,7 +83,7 @@ const Explore = () => {
                 </p>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {trendingPosts.map((post) => (
                   <PostCard
                     key={post._id}

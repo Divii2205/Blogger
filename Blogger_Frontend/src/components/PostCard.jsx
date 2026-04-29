@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
-import { likesAPI, usersAPI } from '../utils/api';
-import Avatar from './ui/Avatar';
-import Badge from './ui/Badge';
-import Card from './ui/Card';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { likesAPI, usersAPI } from "../utils/api";
+import Avatar from "./ui/Avatar";
+import Badge from "./ui/Badge";
+import Card from "./ui/Card";
 
 const PostCard = ({ post, onLikeUpdate }) => {
   const { user, isAuthenticated } = useAuth();
@@ -13,6 +13,8 @@ const PostCard = ({ post, onLikeUpdate }) => {
   const [likesCount, setLikesCount] = useState(post.likesCount || 0);
   const [isLiking, setIsLiking] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const previewText = post.excerpt || post.content || "";
+  const hasFeaturedImage = Boolean(post.featuredImage);
 
   React.useEffect(() => {
     if (user && user.savedPosts) {
@@ -27,7 +29,7 @@ const PostCard = ({ post, onLikeUpdate }) => {
     e.stopPropagation();
 
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
 
@@ -39,7 +41,7 @@ const PostCard = ({ post, onLikeUpdate }) => {
       setIsSaved(response.data.data.isSaved);
     } catch (error) {
       setIsSaved(previousIsSaved);
-      console.error('Failed to bookmark post:', error);
+      console.error("Failed to bookmark post:", error);
     }
   };
 
@@ -48,7 +50,7 @@ const PostCard = ({ post, onLikeUpdate }) => {
     e.stopPropagation();
 
     if (!isAuthenticated) {
-      navigate('/login');
+      navigate("/login");
       return;
     }
 
@@ -78,7 +80,7 @@ const PostCard = ({ post, onLikeUpdate }) => {
       // Revert on error
       setIsLiked(previousIsLiked);
       setLikesCount(previousLikesCount);
-      console.error('Failed to like post:', error);
+      console.error("Failed to like post:", error);
     } finally {
       setIsLiking(false);
     }
@@ -89,17 +91,29 @@ const PostCard = ({ post, onLikeUpdate }) => {
     const postDate = new Date(date);
     const diffInSeconds = Math.floor((now - postDate) / 1000);
 
-    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 60) return "Just now";
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    if (diffInSeconds < 86400)
+      return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 604800)
+      return `${Math.floor(diffInSeconds / 86400)}d ago`;
 
-    return postDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return postDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
   };
 
   return (
-    <Card hover className="group h-full flex flex-col">
-      <Link to={post.slug ? `/p/${post.slug}` : `/post/${post._id}`} className="block h-full flex flex-col">
+    <Card
+      hover
+      className="group h-full min-h-[460px] overflow-hidden flex flex-col"
+    >
+      <Link
+        to={post.slug ? `/p/${post.slug}` : `/post/${post._id}`}
+        className="block h-full flex flex-col"
+      >
         {/* Author Info */}
         <div className="flex items-center space-x-3 mb-4">
           <Avatar
@@ -112,18 +126,19 @@ const PostCard = ({ post, onLikeUpdate }) => {
               {post.author?.fullName}
             </p>
             <p className="text-xs text-neutral-500 dark:text-neutral-400">
-              @{post.author?.username} · {formatDate(post.publishedAt || post.createdAt)}
+              @{post.author?.username} ·{" "}
+              {formatDate(post.publishedAt || post.createdAt)}
             </p>
           </div>
         </div>
 
         {/* Featured Image */}
-        {post.featuredImage && (
+        {hasFeaturedImage && (
           <div className="mb-4 -mx-6">
             <img
               src={post.featuredImage}
               alt={post.title}
-              className="w-full max-h-[200px] object-cover bg-neutral-50 dark:bg-neutral-800 rounded-lg"
+              className="w-full h-48 object-cover bg-neutral-50 dark:bg-neutral-800 rounded-lg"
             />
           </div>
         )}
@@ -134,15 +149,21 @@ const PostCard = ({ post, onLikeUpdate }) => {
             {post.title}
           </h2>
 
-          {post.excerpt && (
-            <p className="text-neutral-600 dark:text-neutral-400 line-clamp-3 text-sm">
-              {post.excerpt}
+          {previewText && (
+            <p
+              className={`text-sm ${
+                hasFeaturedImage
+                  ? "text-neutral-600 dark:text-neutral-400 line-clamp-3"
+                  : "text-neutral-700 dark:text-neutral-300 line-clamp-6 leading-6"
+              }`}
+            >
+              {previewText}
             </p>
           )}
 
           {/* Tags */}
           {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               {post.tags.slice(0, 3).map((tag, index) => (
                 <Badge key={index} variant="default" size="sm">
                   #{tag}
@@ -160,15 +181,40 @@ const PostCard = ({ post, onLikeUpdate }) => {
           <div className="mt-auto pt-3 flex items-center justify-between border-t border-neutral-200 dark:border-neutral-800">
             <div className="flex items-center space-x-4 text-sm text-neutral-500 dark:text-neutral-400">
               <span className="flex items-center space-x-1">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                  />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                  />
                 </svg>
                 <span>{post.views || 0}</span>
               </span>
               <span className="flex items-center space-x-1">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"
+                  />
                 </svg>
                 <span>{post.commentsCount || 0}</span>
               </span>
@@ -179,18 +225,24 @@ const PostCard = ({ post, onLikeUpdate }) => {
             <div className="flex items-center space-x-4">
               <button
                 onClick={handleBookmark}
-                className={`flex items-center space-x-1 text-sm transition-colors ${isSaved
-                    ? 'text-primary-600 dark:text-primary-400'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-primary-600'
-                  }`}
+                className={`flex items-center space-x-1 text-sm transition-colors ${
+                  isSaved
+                    ? "text-primary-600 dark:text-primary-400"
+                    : "text-neutral-500 dark:text-neutral-400 hover:text-primary-600"
+                }`}
               >
                 <svg
-                  className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`}
+                  className={`w-5 h-5 ${isSaved ? "fill-current" : ""}`}
                   fill={isSaved ? "currentColor" : "none"}
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                  />
                 </svg>
               </button>
 
@@ -200,11 +252,12 @@ const PostCard = ({ post, onLikeUpdate }) => {
                 className="flex items-center space-x-1 text-sm transition-colors disabled:opacity-50"
               >
                 <svg
-                  className={`w-5 h-5 transition-all ${isLiked
-                      ? 'fill-red-500 text-red-500'
-                      : 'text-neutral-500 dark:text-neutral-400 hover:text-red-500'
-                    }`}
-                  fill={isLiked ? 'currentColor' : 'none'}
+                  className={`w-5 h-5 transition-all ${
+                    isLiked
+                      ? "fill-red-500 text-red-500"
+                      : "text-neutral-500 dark:text-neutral-400 hover:text-red-500"
+                  }`}
+                  fill={isLiked ? "currentColor" : "none"}
                   viewBox="0 0 24 24"
                   stroke="currentColor"
                 >
@@ -215,7 +268,13 @@ const PostCard = ({ post, onLikeUpdate }) => {
                     d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                   />
                 </svg>
-                <span className={isLiked ? 'text-red-500 font-medium' : 'text-neutral-500 dark:text-neutral-400'}>
+                <span
+                  className={
+                    isLiked
+                      ? "text-red-500 font-medium"
+                      : "text-neutral-500 dark:text-neutral-400"
+                  }
+                >
                   {likesCount}
                 </span>
               </button>
@@ -228,4 +287,3 @@ const PostCard = ({ post, onLikeUpdate }) => {
 };
 
 export default PostCard;
-
