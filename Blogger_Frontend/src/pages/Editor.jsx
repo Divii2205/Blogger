@@ -416,6 +416,13 @@ const Editor = () => {
           ) : (
             <Card>
               <article className="prose prose-lg dark:prose-invert max-w-none">
+                {formData.featuredImage && (
+                  <img
+                    src={formData.featuredImage}
+                    alt="Featured"
+                    className="w-full h-auto max-h-96 object-cover rounded-lg mb-6"
+                  />
+                )}
                 <h1>{formData.title || "Untitled Post"}</h1>
                 {formData.excerpt && <p>{formData.excerpt}</p>}
                 <div className="whitespace-pre-wrap">

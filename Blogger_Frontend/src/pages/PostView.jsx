@@ -307,7 +307,7 @@ const PostView = () => {
       <PageContainer paddingY="py-8">
         <article>
           {/* Header */}
-          <div className="mb-8 border-b border-neutral-200 dark:border-neutral-800 pb-8">
+          <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <Link
                 to={`/profile/${post.author.username}`}
@@ -363,13 +363,13 @@ const PostView = () => {
 
             {/* Title */}
             <div className="flex-1 flex justify-end items-start gap-4">
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-4 leading-tight">
+              <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100 mb-4 leading-tight">
                 {post.metadata?.seoTitle || post.title}
               </h1>
 
               <button
                 onClick={handleBookmark}
-                className={`flex items-center space-x-2 transition-colors mt-4 ${
+                className={`flex items-center space-x-2 transition-colors mt-3 ${
                   isSaved
                     ? "text-primary-600 dark:text-primary-400"
                     : "text-neutral-600 dark:text-neutral-400 hover:text-primary-600 dark:hover:text-primary-400"
@@ -416,39 +416,38 @@ const PostView = () => {
                 Canonical source
               </a>
             )}
-
-            {/* Tags */}
-            {post.tags && post.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {post.tags.map((tag, index) => (
-                  <Badge key={index} variant="primary">
-                    #{tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
           </div>
 
-          {/* Featured Image */}
-          {post.featuredImage && (
-            <img
-              src={post.featuredImage}
-              alt={post.title}
-              className="w-full h-auto max-h-[400px] object-contain bg-neutral-50 dark:bg-neutral-900 rounded-2xl mb-8"
-            />
-          )}
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-            {/* Content */}
-            <div className="lg:col-span-9">
-              <div className="prose prose-lg dark:prose-invert max-w-none mb-8 prose-headings:font-semibold prose-p:leading-8 prose-p:text-[1.08rem]">
-                <div
-                  className="text-neutral-800 dark:text-neutral-200 font-serif"
-                  dangerouslySetInnerHTML={{ __html: markdownData.safeHtml }}
+          {/* Article Content Card */}
+          <Card className="mb-8">
+            <article className="prose prose-lg dark:prose-invert max-w-none">
+              {/* Featured Image */}
+              {post.featuredImage && (
+                <img
+                  src={post.featuredImage}
+                  alt={post.title}
+                  className="w-full h-auto max-h-96 object-cover rounded-lg mb-6"
                 />
-              </div>
-            </div>
-          </div>
+              )}
+
+              {/* Tags */}
+              {post.tags && post.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-6 mt-10">
+                  {post.tags.map((tag, index) => (
+                    <Badge key={index} variant="primary">
+                      #{tag}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+
+              {/* Content */}
+              <div
+                className="whitespace-pre-wrap mt-10"
+                dangerouslySetInnerHTML={{ __html: markdownData.safeHtml }}
+              />
+            </article>
+          </Card>
 
           {/* Engagement */}
           <div className="flex items-center space-x-6 py-6 border-y border-neutral-200 dark:border-neutral-800 mb-8">

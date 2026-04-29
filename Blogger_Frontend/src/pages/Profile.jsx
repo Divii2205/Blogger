@@ -294,7 +294,7 @@ const Profile = () => {
                   className="mt-4"
                   onClick={() => navigate('/write')}
                 >
-                  Write your first post
+                  Write a post now
                 </Button>
               )}
             </div>
