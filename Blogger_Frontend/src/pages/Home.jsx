@@ -1,51 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { postsAPI } from '../utils/api';
+import { usePostsListQuery } from '../features/posts/hooks/usePostQueries';
 import Layout from '../components/layout/Layout';
+import PageContainer from '../components/layout/PageContainer';
 import PostCard from '../components/PostCard';
 import Button from '../components/ui/Button';
 
 const Home = () => {
   const { isAuthenticated } = useAuth();
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [sortBy, setSortBy] = useState('publishedAt');
 
+  const { data, isLoading: loading } = usePostsListQuery({
+    page,
+    limit: 10,
+    sortBy,
+    order: 'desc',
+  });
+
   useEffect(() => {
-    fetchPosts();
+    setPosts([]);
+    setPage(1);
   }, [sortBy]);
 
-  const fetchPosts = async (pageNum = 1) => {
-    try {
-      setLoading(true);
-      const response = await postsAPI.getPosts({
-        page: pageNum,
-        limit: 10,
-        sortBy,
-        order: 'desc',
-      });
-
-      const newPosts = response.data.data.posts;
-      
-      if (pageNum === 1) {
-        setPosts(newPosts);
-      } else {
-        setPosts(prev => [...prev, ...newPosts]);
-      }
-
-      setHasMore(response.data.data.pagination.page < response.data.data.pagination.pages);
-      setPage(pageNum);
-    } catch (error) {
-      console.error('Failed to fetch posts:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!data) return;
+    setPosts(prev => (page === 1 ? data.posts : [...prev, ...data.posts]));
+    setHasMore(data.pagination.page < data.pagination.pages);
+  }, [data, page]);
 
   const loadMore = () => {
-    fetchPosts(page + 1);
+    setPage(prev => prev + 1);
   };
 
   const handleLikeUpdate = (postId, isLiked, likesCount) => {
@@ -58,13 +45,13 @@ const Home = () => {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <PageContainer paddingY="py-8">
         {/* Hero Section */}
         <div className="text-center mb-12 space-y-4 animate-fade-in">
           <h1 className="text-4xl md:text-5xl font-bold text-neutral-900 dark:text-neutral-100">
             Welcome to Blogger
           </h1>
-          <p className="text-lg text-neutral-600 dark:text-neutral-400 max-w-2xl mx-auto">
+          <p className="text-lg text-neutral-700 dark:text-neutral-300 max-w-2xl mx-auto leading-relaxed">
             Discover stories, thinking, and expertise from writers on any topic.
           </p>
           {!isAuthenticated && (
@@ -74,35 +61,6 @@ const Home = () => {
               </Button>
             </div>
           )}
-        </div>
-
-        {/* Sort Options */}
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
-            Latest Posts
-          </h2>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setSortBy('publishedAt')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                sortBy === 'publishedAt'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
-                  : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
-              }`}
-            >
-              Latest
-            </button>
-            <button
-              onClick={() => setSortBy('likesCount')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                sortBy === 'likesCount'
-                  ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
-                  : 'text-neutral-600 hover:bg-neutral-100 dark:text-neutral-400 dark:hover:bg-neutral-800'
-              }`}
-            >
-              Popular
-            </button>
-          </div>
         </div>
 
         {/* Posts Grid */}
@@ -139,7 +97,7 @@ const Home = () => {
           </div>
         ) : (
           <>
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {posts.map((post) => (
                 <PostCard
                   key={post._id}
@@ -164,7 +122,7 @@ const Home = () => {
             )}
           </>
         )}
-      </div>
+      </PageContainer>
     </Layout>
   );
 };

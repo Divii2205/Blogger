@@ -244,7 +244,7 @@ router.put('/preferences', protect, [
 
     const user = await User.findByIdAndUpdate(
       req.user._id,
-      { preferences: { ...req.user.preferences, ...req.body.preferences } },
+      { preferences: { ...(req.user.preferences || {}), ...(req.body.preferences || {}) } },
       { new: true, runValidators: true }
     ).select('-password');
 
@@ -323,6 +323,80 @@ router.get('/:username/following', async (req, res) => {
       success: false,
       message: 'Server error'
     });
+  }
+});
+
+// @route   POST /api/users/bookmarks/:postId
+// @desc    Toggle save/bookmark post
+// @access  Private
+router.post('/bookmarks/:postId', protect, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.postId);
+    if (!post) {
+      return res.status(404).json({ success: false, message: 'Post not found' });
+    }
+
+    const user = await User.findById(req.user._id);
+    const isSaved = user.savedPosts.includes(req.params.postId);
+
+    if (isSaved) {
+      user.savedPosts = user.savedPosts.filter(id => id.toString() !== req.params.postId.toString());
+    } else {
+      user.savedPosts.push(req.params.postId);
+    }
+    await user.save();
+
+    res.json({
+      success: true,
+      message: isSaved ? 'Post removed from bookmarks' : 'Post bookmarked',
+      data: { isSaved: !isSaved }
+    });
+  } catch (error) {
+    console.error('Bookmark error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+});
+
+// @route   GET /api/users/me/bookmarks
+// @desc    Get user's bookmarked posts
+// @access  Private
+router.get('/me/bookmarks', protect, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const user = await User.findById(req.user._id).populate({
+      path: 'savedPosts',
+      populate: { path: 'author', select: 'username fullName avatar' },
+      options: { sort: { publishedAt: -1 }, skip, limit }
+    });
+
+    const total = user.savedPosts.length;
+
+    // Add isLiked and isSaved logic
+    const postsWithStatus = user.savedPosts.map(post => {
+      const postObj = post.toObject();
+      postObj.isLiked = post.isLikedBy(req.user._id);
+      postObj.isSaved = true; // inherently saved if in this list
+      return postObj;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        posts: postsWithStatus,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get bookmarks error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

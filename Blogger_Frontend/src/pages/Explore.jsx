@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { postsAPI, usersAPI } from '../utils/api';
+import { usersAPI } from '../utils/api';
+import { useTrendingPostsQuery, useUsersQuery } from '../features/posts/hooks/usePostQueries';
 import Layout from '../components/layout/Layout';
+import PageContainer from '../components/layout/PageContainer';
 import PostCard from '../components/PostCard';
 import Avatar from '../components/ui/Avatar';
 import Button from '../components/ui/Button';
@@ -10,33 +12,18 @@ import { Link } from 'react-router-dom';
 const Explore = () => {
   const [trendingPosts, setTrendingPosts] = useState([]);
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const { data: trendingData = [], isLoading: loadingTrending } = useTrendingPostsQuery({ limit: 10 });
+  const { data: usersData = [], isLoading: loadingUsers } = useUsersQuery({ limit: 10 });
 
   useEffect(() => {
-    fetchTrending();
-    fetchUsers();
-  }, []);
+    setTrendingPosts(trendingData);
+  }, [trendingData]);
 
-  const fetchTrending = async () => {
-    try {
-      const response = await postsAPI.getTrending({ limit: 10 });
-      setTrendingPosts(response.data.data.posts);
-    } catch (error) {
-      console.error('Failed to fetch trending posts:', error);
-    }
-  };
-
-  const fetchUsers = async () => {
-    try {
-      const response = await usersAPI.getUsers({ limit: 10 });
-      setUsers(response.data.data.users);
-    } catch (error) {
-      console.error('Failed to fetch users:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    setUsers(usersData);
+  }, [usersData]);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -62,13 +49,13 @@ const Explore = () => {
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <PageContainer paddingY="py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 space-y-2">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             Explore
           </h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-2">
+          <p className="text-neutral-600 dark:text-neutral-400">
             Discover trending posts and talented writers
           </p>
         </div>
@@ -80,7 +67,7 @@ const Explore = () => {
               Trending Posts
             </h2>
             
-            {loading && trendingPosts.length === 0 ? (
+            {(loadingTrending || loading) && trendingPosts.length === 0 ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div
@@ -96,7 +83,7 @@ const Explore = () => {
                 </p>
               </Card>
             ) : (
-              <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {trendingPosts.map((post) => (
                   <PostCard
                     key={post._id}
@@ -136,7 +123,7 @@ const Explore = () => {
 
               {/* Users List */}
               <Card padding="none">
-                {loading && users.length === 0 ? (
+                {(loadingUsers || loading) && users.length === 0 ? (
                   <div className="p-4 space-y-4">
                     {[1, 2, 3].map((i) => (
                       <div
@@ -181,7 +168,7 @@ const Explore = () => {
             </div>
           </div>
         </div>
-      </div>
+      </PageContainer>
     </Layout>
   );
 };

@@ -1,17 +1,47 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { likesAPI } from '../utils/api';
+import { likesAPI, usersAPI } from '../utils/api';
 import Avatar from './ui/Avatar';
 import Badge from './ui/Badge';
 import Card from './ui/Card';
 
 const PostCard = ({ post, onLikeUpdate }) => {
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
   const [likesCount, setLikesCount] = useState(post.likesCount || 0);
   const [isLiking, setIsLiking] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  React.useEffect(() => {
+    if (user && user.savedPosts) {
+      setIsSaved(user.savedPosts.includes(post._id));
+    } else if (post.isSaved) {
+      setIsSaved(true);
+    }
+  }, [user, post._id, post.isSaved]);
+
+  const handleBookmark = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    const previousIsSaved = isSaved;
+    setIsSaved(!isSaved);
+
+    try {
+      const response = await usersAPI.toggleBookmark(post._id);
+      setIsSaved(response.data.data.isSaved);
+    } catch (error) {
+      setIsSaved(previousIsSaved);
+      console.error('Failed to bookmark post:', error);
+    }
+  };
 
   const handleLike = async (e) => {
     e.preventDefault();
@@ -40,7 +70,7 @@ const PostCard = ({ post, onLikeUpdate }) => {
       const serverData = response.data.data;
       setIsLiked(serverData.isLiked);
       setLikesCount(serverData.likesCount);
-      
+
       if (onLikeUpdate) {
         onLikeUpdate(post._id, serverData.isLiked, serverData.likesCount);
       }
@@ -63,13 +93,13 @@ const PostCard = ({ post, onLikeUpdate }) => {
     if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
     if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
     if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`;
-    
+
     return postDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
-    <Card hover className="group">
-      <Link to={`/post/${post._id}`} className="block">
+    <Card hover className="group h-full flex flex-col">
+      <Link to={post.slug ? `/p/${post.slug}` : `/post/${post._id}`} className="block h-full flex flex-col">
         {/* Author Info */}
         <div className="flex items-center space-x-3 mb-4">
           <Avatar
@@ -93,17 +123,17 @@ const PostCard = ({ post, onLikeUpdate }) => {
             <img
               src={post.featuredImage}
               alt={post.title}
-              className="w-full h-56 object-cover rounded-lg"
+              className="w-full max-h-[200px] object-cover bg-neutral-50 dark:bg-neutral-800 rounded-lg"
             />
           </div>
         )}
 
         {/* Content */}
-        <div className="space-y-3">
+        <div className="space-y-3 flex-1 flex flex-col">
           <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100 line-clamp-2 group-hover:text-primary-600 dark:group-hover:text-primary-400 transition-colors">
             {post.title}
           </h2>
-          
+
           {post.excerpt && (
             <p className="text-neutral-600 dark:text-neutral-400 line-clamp-3 text-sm">
               {post.excerpt}
@@ -127,7 +157,7 @@ const PostCard = ({ post, onLikeUpdate }) => {
           )}
 
           {/* Meta Info */}
-          <div className="flex items-center justify-between pt-3 border-t border-neutral-200 dark:border-neutral-800">
+          <div className="mt-auto pt-3 flex items-center justify-between border-t border-neutral-200 dark:border-neutral-800">
             <div className="flex items-center space-x-4 text-sm text-neutral-500 dark:text-neutral-400">
               <span className="flex items-center space-x-1">
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -145,33 +175,51 @@ const PostCard = ({ post, onLikeUpdate }) => {
               <span>{post.readingTime || 1} min read</span>
             </div>
 
-            {/* Like Button */}
-            <button
-              onClick={handleLike}
-              disabled={isLiking}
-              className="flex items-center space-x-1 text-sm transition-colors disabled:opacity-50"
-            >
-              <svg
-                className={`w-5 h-5 transition-all ${
-                  isLiked
-                    ? 'fill-red-500 text-red-500'
-                    : 'text-neutral-500 dark:text-neutral-400 hover:text-red-500'
-                }`}
-                fill={isLiked ? 'currentColor' : 'none'}
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            {/* Actions */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={handleBookmark}
+                className={`flex items-center space-x-1 text-sm transition-colors ${isSaved
+                    ? 'text-primary-600 dark:text-primary-400'
+                    : 'text-neutral-500 dark:text-neutral-400 hover:text-primary-600'
+                  }`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                />
-              </svg>
-              <span className={isLiked ? 'text-red-500 font-medium' : 'text-neutral-500 dark:text-neutral-400'}>
-                {likesCount}
-              </span>
-            </button>
+                <svg
+                  className={`w-5 h-5 ${isSaved ? 'fill-current' : ''}`}
+                  fill={isSaved ? "currentColor" : "none"}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                </svg>
+              </button>
+
+              <button
+                onClick={handleLike}
+                disabled={isLiking}
+                className="flex items-center space-x-1 text-sm transition-colors disabled:opacity-50"
+              >
+                <svg
+                  className={`w-5 h-5 transition-all ${isLiked
+                      ? 'fill-red-500 text-red-500'
+                      : 'text-neutral-500 dark:text-neutral-400 hover:text-red-500'
+                    }`}
+                  fill={isLiked ? 'currentColor' : 'none'}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
+                </svg>
+                <span className={isLiked ? 'text-red-500 font-medium' : 'text-neutral-500 dark:text-neutral-400'}>
+                  {likesCount}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       </Link>

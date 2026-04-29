@@ -1,11 +1,26 @@
 const mongoose = require('mongoose');
 
+const createSlug = (value = '') =>
+  value
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 120);
+
 const postSchema = new mongoose.Schema({
   title: {
     type: String,
     required: [true, 'Title is required'],
     trim: true,
     maxlength: [200, 'Title cannot exceed 200 characters']
+  },
+  slug: {
+    type: String,
+    unique: true,
+    index: true
   },
   content: {
     type: String,
@@ -36,6 +51,9 @@ const postSchema = new mongoose.Schema({
     default: 'draft'
   },
   publishedAt: {
+    type: Date
+  },
+  lastEditedAt: {
     type: Date
   },
   likes: [{
@@ -73,6 +91,14 @@ const postSchema = new mongoose.Schema({
     ref: 'User'
   }],
   metadata: {
+    seoTitle: {
+      type: String,
+      maxlength: [120, 'SEO title cannot exceed 120 characters']
+    },
+    canonicalUrl: {
+      type: String,
+      default: ''
+    },
     description: {
       type: String,
       maxlength: [300, 'Meta description cannot exceed 300 characters']
@@ -93,6 +119,7 @@ postSchema.index({ status: 1, publishedAt: -1 });
 postSchema.index({ tags: 1 });
 postSchema.index({ likesCount: -1 });
 postSchema.index({ views: -1 });
+postSchema.index({ slug: 1 }, { unique: true });
 
 // Calculate reading time before saving
 postSchema.pre('save', function(next) {
@@ -110,6 +137,27 @@ postSchema.pre('save', function(next) {
     const plainText = this.content.replace(/<[^>]*>/g, ''); // Remove HTML tags
     this.excerpt = plainText.substring(0, 200) + (plainText.length > 200 ? '...' : '');
   }
+  next();
+});
+
+postSchema.pre('save', async function(next) {
+  if (!this.isModified('title') && this.slug) {
+    return next();
+  }
+
+  const baseSlug = createSlug(this.title || '');
+  if (!baseSlug) {
+    this.slug = undefined;
+    return next();
+  }
+
+  let slug = baseSlug;
+  let counter = 1;
+  while (await mongoose.models.Post.exists({ slug, _id: { $ne: this._id } })) {
+    counter += 1;
+    slug = `${baseSlug}-${counter}`;
+  }
+  this.slug = slug;
   next();
 });
 

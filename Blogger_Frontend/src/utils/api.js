@@ -1,7 +1,9 @@
 import axios from 'axios';
 
 // For local development, use localhost. For production, use Render URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://blogger-l1tj.onrender.com/api';
+const API_BASE_URL = import.meta.env.DEV 
+  ? (import.meta.env.VITE_API_URL || 'http://localhost:5000/api')
+  : 'https://blogger-l1tj.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -32,7 +34,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       const message = error.response?.data?.message || '';
       // Only logout for actual auth token issues
-      const authTokenErrors = ['Invalid token', 'Token expired', 'No token', 'token is invalid', 'jwt expired'];
+      const authTokenErrors = ['token failed', 'invalid token', 'token expired', 'no token', 'jwt expired'];
       
       if (authTokenErrors.some(msg => message.toLowerCase().includes(msg.toLowerCase()))) {
         localStorage.removeItem('token');
@@ -58,6 +60,7 @@ export const postsAPI = {
   getFeed: (params) => api.get('/posts/feed', { params }),
   getTrending: (params) => api.get('/posts/trending', { params }),
   getPost: (id) => api.get(`/posts/${id}`),
+  getPostBySlug: (slug) => api.get(`/posts/slug/${slug}`),
   createPost: (data) => api.post('/posts', data),
   updatePost: (id, data) => api.put(`/posts/${id}`, data),
   deletePost: (id) => api.delete(`/posts/${id}`),
@@ -73,6 +76,15 @@ export const usersAPI = {
   updatePreferences: (data) => api.put('/users/preferences', data),
   getFollowers: (username) => api.get(`/users/${username}/followers`),
   getFollowing: (username) => api.get(`/users/${username}/following`),
+  toggleBookmark: (postId) => api.post(`/users/bookmarks/${postId}`),
+  getBookmarks: (params) => api.get('/users/me/bookmarks', { params }),
+};
+
+// Upload APIs
+export const uploadAPI = {
+  uploadImage: (formData) => api.post('/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
 };
 
 // Follows APIs

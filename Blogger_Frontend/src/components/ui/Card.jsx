@@ -17,10 +17,10 @@ const Card = ({
   return (
     <div
       className={`
-        bg-white dark:bg-neutral-900 
-        border border-neutral-200 dark:border-neutral-800
-        rounded-xl shadow-sm
-        ${hover ? 'hover:shadow-md hover:scale-[1.01] transition-all duration-200' : ''}
+        bg-white/80 dark:bg-neutral-900/80 backdrop-blur-sm
+        border border-neutral-200/50 dark:border-neutral-800/50
+        rounded-2xl shadow-sm dark:shadow-neutral-950/50
+        ${hover ? 'hover:shadow-md dark:hover:shadow-primary-900/15 hover:-translate-y-0.5 transition-all duration-300' : ''}
         ${paddingStyles[padding]}
         ${className}
       `}

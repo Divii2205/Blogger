@@ -42,7 +42,7 @@ const Modal = ({
           className={`
             relative w-full ${sizes[size]}
             bg-white dark:bg-neutral-900
-            rounded-2xl shadow-2xl
+            rounded-2xl shadow-xl
             border border-neutral-200 dark:border-neutral-800
             animate-scale-in
           `}

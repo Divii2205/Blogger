@@ -32,7 +32,9 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('user', JSON.stringify(response.data.data.user));
         } catch (error) {
           console.error('Token validation failed:', error);
-          logout();
+          if (error.response?.status === 401) {
+            logout();
+          }
         }
       }
       setLoading(false);

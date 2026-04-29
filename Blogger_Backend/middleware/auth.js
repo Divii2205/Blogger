@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { sendError } = require('../utils/apiResponse');
 
 // Protect routes - verify JWT token
 const protect = async (req, res, next) => {
@@ -18,27 +19,18 @@ const protect = async (req, res, next) => {
       req.user = await User.findById(decoded.id).select('-password');
       
       if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: 'Token is valid but user no longer exists'
-        });
+        return sendError(res, 'Token is valid but user no longer exists', 401);
       }
 
       next();
     } catch (error) {
       console.error('Token verification error:', error);
-      return res.status(401).json({
-        success: false,
-        message: 'Not authorized, token failed'
-      });
+      return sendError(res, 'Not authorized, token failed', 401);
     }
   }
 
   if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Not authorized, no token provided'
-    });
+    return sendError(res, 'Not authorized, no token provided', 401);
   }
 };
 
@@ -64,10 +56,7 @@ const optionalAuth = async (req, res, next) => {
 const authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Not authorized'
-      });
+      return sendError(res, 'Not authorized', 401);
     }
 
     // For now, we'll implement basic role checking
@@ -84,28 +73,19 @@ const checkOwnership = (Model, paramName = 'id') => {
       const resource = await Model.findById(resourceId);
 
       if (!resource) {
-        return res.status(404).json({
-          success: false,
-          message: 'Resource not found'
-        });
+        return sendError(res, 'Resource not found', 404);
       }
 
       // Check if user owns the resource
       if (resource.author && resource.author.toString() !== req.user._id.toString()) {
-        return res.status(403).json({
-          success: false,
-          message: 'Not authorized to access this resource'
-        });
+        return sendError(res, 'Not authorized to access this resource', 403);
       }
 
       req.resource = resource;
       next();
     } catch (error) {
       console.error('Ownership check error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Server error during ownership verification'
-      });
+      return sendError(res, 'Server error during ownership verification', 500);
     }
   };
 };

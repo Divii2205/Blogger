@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { usersAPI, postsAPI, followsAPI } from '../utils/api';
+import { usersAPI, followsAPI } from '../utils/api';
+import { useProfileQuery, useUserPostsQuery } from '../features/posts/hooks/usePostQueries';
 import Layout from '../components/layout/Layout';
+import PageContainer from '../components/layout/PageContainer';
 import PostCard from '../components/PostCard';
 import Avatar from '../components/ui/Avatar';
 import Button from '../components/ui/Button';
@@ -15,37 +17,37 @@ const Profile = () => {
 
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState('published');
+  const { data: profileData, isLoading: loadingProfile } = useProfileQuery(username);
+  const { data: userPosts = [], isLoading: loadingPosts } = useUserPostsQuery(username, { status: activeTab });
 
   useEffect(() => {
-    fetchUserProfile();
-    fetchUserPosts();
-  }, [username, activeTab]);
+    if (!profileData) return;
+    setUser(profileData.user);
+    setIsFollowing(profileData.isFollowing || false);
+  }, [profileData]);
 
-  const fetchUserProfile = async () => {
-    try {
-      const response = await usersAPI.getUser(username);
-      setUser(response.data.data.user);
-      setIsFollowing(response.data.data.isFollowing || false);
-    } catch (error) {
-      console.error('Failed to fetch user profile:', error);
-    } finally {
-      setLoading(false);
+  useEffect(() => {
+    if (activeTab !== 'saved') {
+      setPosts(userPosts);
     }
-  };
+  }, [userPosts, activeTab]);
 
-  const fetchUserPosts = async () => {
-    try {
-      const response = await postsAPI.getUserPosts(username, {
-        status: activeTab,
-      });
-      setPosts(response.data.data.posts);
-    } catch (error) {
-      console.error('Failed to fetch user posts:', error);
-    }
-  };
+  useEffect(() => {
+    const fetchSaved = async () => {
+      if (activeTab !== 'saved') return;
+      try {
+        const response = await usersAPI.getBookmarks();
+        setPosts(response.data.data.posts);
+      } catch (error) {
+        console.error('Failed to fetch saved posts:', error);
+      }
+    };
+    fetchSaved();
+  }, [activeTab]);
+
+  const loading = loadingProfile || loadingPosts;
 
   const handleFollow = async () => {
     if (!isAuthenticated) {
@@ -96,12 +98,12 @@ const Profile = () => {
   if (loading) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <PageContainer paddingY="py-8">
           <div className="animate-pulse space-y-4">
             <div className="h-32 bg-neutral-200 dark:bg-neutral-800 rounded-xl" />
             <div className="h-64 bg-neutral-200 dark:bg-neutral-800 rounded-xl" />
           </div>
-        </div>
+        </PageContainer>
       </Layout>
     );
   }
@@ -109,12 +111,12 @@ const Profile = () => {
   if (!user) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto px-4 py-16 text-center">
+        <PageContainer paddingY="py-16" className="text-center">
           <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100 mb-4">
             User not found
           </h2>
           <Button onClick={() => navigate('/')}>Go Home</Button>
-        </div>
+        </PageContainer>
       </Layout>
     );
   }
@@ -123,7 +125,7 @@ const Profile = () => {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <PageContainer paddingY="py-8">
         {/* Profile Header */}
         <Card className="mb-8">
           <div className="flex flex-col md:flex-row md:items-start gap-5">
@@ -141,7 +143,7 @@ const Profile = () => {
               {/* Name and Button */}
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div className="space-y-1">
-                  <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
+                  <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
                     {user.fullName}
                   </h1>
                   <p className="text-lg text-neutral-500 dark:text-neutral-400">
@@ -253,6 +255,16 @@ const Profile = () => {
             >
               Drafts
             </button>
+            <button
+              onClick={() => setActiveTab('saved')}
+              className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+                activeTab === 'saved'
+                  ? 'border-primary-600 text-primary-600'
+                  : 'border-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+              }`}
+            >
+              Saved
+            </button>
           </div>
         )}
 
@@ -274,7 +286,7 @@ const Profile = () => {
                 />
               </svg>
               <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
-                No posts yet
+                {activeTab === 'saved' ? 'No saved posts' : 'No posts yet'}
               </h3>
               {isOwnProfile && (
                 <Button
@@ -288,7 +300,7 @@ const Profile = () => {
             </div>
           </Card>
         ) : (
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {posts.map((post) => (
               <PostCard
                 key={post._id}
@@ -298,7 +310,7 @@ const Profile = () => {
             ))}
           </div>
         )}
-      </div>
+      </PageContainer>
     </Layout>
   );
 };

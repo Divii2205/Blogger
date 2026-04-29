@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { usersAPI } from '../utils/api';
+import { usersAPI, uploadAPI } from '../utils/api';
 import Layout from '../components/layout/Layout';
+import PageContainer from '../components/layout/PageContainer';
 import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
 import Button from '../components/ui/Button';
@@ -64,6 +65,33 @@ const Settings = () => {
     }
   };
 
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    if (!file.type.startsWith('image/')) {
+      setErrors({ avatar: 'Please select a valid image file' });
+      return;
+    }
+
+    setUploadingAvatar(true);
+    setErrors({});
+    
+    try {
+      const fd = new FormData();
+      fd.append('image', file);
+      const response = await uploadAPI.uploadImage(fd);
+      if (response.data.success) {
+        setAvatarUrl(response.data.data.url);
+      }
+    } catch (error) {
+      setErrors({ avatar: 'Failed to upload image' });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleAvatarSubmit = async (e) => {
     e.preventDefault();
     if (!avatarUrl.trim()) return;
@@ -114,13 +142,13 @@ const Settings = () => {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <PageContainer paddingY="py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 space-y-2">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             Settings
           </h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-2">
+          <p className="text-neutral-600 dark:text-neutral-400">
             Manage your account settings and preferences
           </p>
         </div>
@@ -244,16 +272,29 @@ const Settings = () => {
                 </div>
 
                 <form onSubmit={handleAvatarSubmit} className="space-y-6">
-                  <Input
-                    label="Avatar URL"
-                    value={avatarUrl}
-                    onChange={(e) => setAvatarUrl(e.target.value)}
-                    placeholder="https://example.com/avatar.jpg"
-                    error={errors.avatar}
-                    helperText="Enter a URL to an image for your avatar"
-                  />
+                  <div className="flex flex-col space-y-4">
+                    <label className="relative cursor-pointer w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500">
+                      <span>{uploadingAvatar ? 'Uploading...' : 'Upload New Avatar from Device'}</span>
+                      <input 
+                        type="file" 
+                        accept="image/*"
+                        className="sr-only" 
+                        onChange={handleAvatarFileChange}
+                        disabled={uploadingAvatar}
+                      />
+                    </label>
+                    <div className="text-center text-sm text-neutral-500 dark:text-neutral-400">or</div>
+                    <Input
+                      label="Avatar URL (Fallback)"
+                      value={avatarUrl}
+                      onChange={(e) => setAvatarUrl(e.target.value)}
+                      placeholder="https://example.com/avatar.jpg"
+                      error={errors.avatar}
+                      helperText="Paste a remote image URL if you prefer"
+                    />
+                  </div>
 
-                  <div className="flex justify-end">
+                  <div className="flex justify-end pt-4">
                     <Button
                       type="submit"
                       variant="primary"
@@ -359,7 +400,7 @@ const Settings = () => {
             )}
           </div>
         </div>
-      </div>
+      </PageContainer>
     </Layout>
   );
 };

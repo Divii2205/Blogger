@@ -4,13 +4,20 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
+const requestContext = require('./middleware/requestContext');
+const requestLogger = require('./middleware/requestLogger');
+const errorHandler = require('./middleware/errorHandler');
+const { sendSuccess, sendError } = require('./utils/apiResponse');
+const validateEnv = require('./utils/validateEnv');
 require('dotenv').config();
+validateEnv();
 
 const app = express();
 
 // Security middleware
 app.use(helmet());
 app.use(compression());
+app.use(requestContext);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -40,7 +47,11 @@ app.use(cors({
       callback(null, true);
     } else {
       console.log('Blocked by CORS:', origin);
-      callback(null, true); // Still allow for development
+      if ((process.env.NODE_ENV || 'development') === 'development') {
+        callback(null, true);
+      } else {
+        callback(new Error('CORS blocked for this origin'));
+      }
     }
   },
   credentials: true,
@@ -51,6 +62,7 @@ app.use(cors({
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(requestLogger);
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/blogger_platform', {
@@ -67,12 +79,11 @@ app.use('/api/posts', require('./routes/posts'));
 app.use('/api/comments', require('./routes/comments'));
 app.use('/api/likes', require('./routes/likes'));
 app.use('/api/follows', require('./routes/follows'));
+app.use('/api/upload', require('./routes/upload'));
 
 // Root route - API welcome page
 app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Blogger Platform API',
+  return sendSuccess(res, {
     version: '1.0.0',
     endpoints: {
       health: '/api/health',
@@ -85,36 +96,32 @@ app.get('/', (req, res) => {
     },
     documentation: 'See README.md for full API documentation',
     status: 'Running'
-  });
+  }, 'Blogger Platform API');
 });
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ 
+  return sendSuccess(res, { 
     status: 'OK', 
-    message: 'Blogger Platform API is running',
     timestamp: new Date().toISOString(),
     database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected'
-  });
+  }, 'Blogger Platform API is running');
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    success: false,
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
-  });
+app.get('/api/ready', (req, res) => {
+  if (mongoose.connection.readyState !== 1) {
+    return sendError(res, 'Database not ready', 503);
+  }
+  return sendSuccess(res, { ready: true }, 'Service ready');
 });
 
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Route not found'
-  });
+  return sendError(res, 'Route not found', 404);
 });
+
+// Error handling middleware
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 

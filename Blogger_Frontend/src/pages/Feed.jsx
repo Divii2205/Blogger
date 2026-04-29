@@ -1,46 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { postsAPI } from '../utils/api';
+import { useFeedPostsQuery } from '../features/posts/hooks/usePostQueries';
 import Layout from '../components/layout/Layout';
+import PageContainer from '../components/layout/PageContainer';
 import PostCard from '../components/PostCard';
 import Button from '../components/ui/Button';
 
 const Feed = () => {
   const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
+  const { data, isLoading: loading } = useFeedPostsQuery({ page, limit: 10 });
+
   useEffect(() => {
-    fetchFeed();
-  }, []);
-
-  const fetchFeed = async (pageNum = 1) => {
-    try {
-      setLoading(true);
-      const response = await postsAPI.getFeed({
-        page: pageNum,
-        limit: 10,
-      });
-
-      const newPosts = response.data.data.posts;
-      
-      if (pageNum === 1) {
-        setPosts(newPosts);
-      } else {
-        setPosts(prev => [...prev, ...newPosts]);
-      }
-
-      setHasMore(response.data.data.pagination.page < response.data.data.pagination.pages);
-      setPage(pageNum);
-    } catch (error) {
-      console.error('Failed to fetch feed:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (!data) return;
+    setPosts(prev => (page === 1 ? data.posts : [...prev, ...data.posts]));
+    setHasMore(data.pagination.page < data.pagination.pages);
+  }, [data, page]);
 
   const loadMore = () => {
-    fetchFeed(page + 1);
+    setPage(prev => prev + 1);
   };
 
   const handleLikeUpdate = (postId, isLiked, likesCount) => {
@@ -53,13 +32,13 @@ const Feed = () => {
 
   return (
     <Layout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+      <PageContainer paddingY="py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 space-y-2">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             Your Feed
           </h1>
-          <p className="text-neutral-600 dark:text-neutral-400 mt-2">
+          <p className="text-neutral-600 dark:text-neutral-400">
             Posts from writers you follow
           </p>
         </div>
@@ -101,7 +80,7 @@ const Feed = () => {
           </div>
         ) : (
           <>
-            <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {posts.map((post) => (
                 <PostCard
                   key={post._id}
@@ -125,7 +104,7 @@ const Feed = () => {
             )}
           </>
         )}
-      </div>
+      </PageContainer>
     </Layout>
   );
 };
