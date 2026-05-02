@@ -17,6 +17,14 @@ const postSchema = new mongoose.Schema({
     trim: true,
     maxlength: [200, 'Title cannot exceed 200 characters']
   },
+  // Lower-cased NFKC-normalized copy of `title`. NFKC collapses
+  // compatibility characters (e.g. mathematical bold "𝐘𝐨𝐮𝐫" → "Your")
+  // so users searching for plain ASCII can match stylised titles.
+  titleNormalized: {
+    type: String,
+    default: '',
+    index: true,
+  },
   slug: {
     type: String,
   },
@@ -129,6 +137,13 @@ postSchema.pre('save', function(next) {
     const wordsPerMinute = 200; // Average reading speed
     const wordCount = this.content.split(/\s+/).length;
     this.readingTime = Math.max(1, Math.ceil(wordCount / wordsPerMinute));
+  }
+  next();
+});
+
+postSchema.pre('save', function(next) {
+  if (this.isModified('title') || !this.titleNormalized) {
+    this.titleNormalized = (this.title || '').normalize('NFKC').toLowerCase();
   }
   next();
 });

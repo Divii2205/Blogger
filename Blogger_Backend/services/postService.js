@@ -26,7 +26,10 @@ const listPublishedPosts = async (queryParams, authUser) => {
 
   const q = (queryParams.q || "").trim();
   if (q) {
-    query.title = { $regex: escapeRegExp(q), $options: "i" };
+    // Match against the NFKC-normalized title so a plain "your" query also
+    // hits stylised titles like "𝐘𝐨𝐮𝐫" — see Post model `titleNormalized`.
+    const normalizedQ = q.normalize("NFKC").toLowerCase();
+    query.titleNormalized = { $regex: escapeRegExp(normalizedQ) };
   }
 
   if (queryParams.author) {
@@ -69,7 +72,10 @@ const listTrendingPosts = async (queryParams, authUser) => {
   }
   const q = (queryParams.q || "").trim();
   if (q) {
-    query.title = { $regex: escapeRegExp(q), $options: "i" };
+    // Match against the NFKC-normalized title so a plain "your" query also
+    // hits stylised titles like "𝐘𝐨𝐮𝐫" — see Post model `titleNormalized`.
+    const normalizedQ = q.normalize("NFKC").toLowerCase();
+    query.titleNormalized = { $regex: escapeRegExp(normalizedQ) };
   }
 
   const posts = await postRepository.findPosts(
@@ -104,7 +110,10 @@ const listFeedPosts = async (queryParams, authUser) => {
   }
   const q = (queryParams.q || "").trim();
   if (q) {
-    query.title = { $regex: escapeRegExp(q), $options: "i" };
+    // Match against the NFKC-normalized title so a plain "your" query also
+    // hits stylised titles like "𝐘𝐨𝐮𝐫" — see Post model `titleNormalized`.
+    const normalizedQ = q.normalize("NFKC").toLowerCase();
+    query.titleNormalized = { $regex: escapeRegExp(normalizedQ) };
   }
 
   const [posts, total] = await Promise.all([

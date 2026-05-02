@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { usersAPI } from '../utils/api';
+import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTrendingPostsQuery, useUsersQuery } from '../features/posts/hooks/usePostQueries';
 import Layout from '../components/layout/Layout';
 import PageContainer from '../components/layout/PageContainer';
@@ -7,50 +7,31 @@ import PostCard from '../components/PostCard';
 import Avatar from '../components/ui/Avatar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
-import { Link } from 'react-router-dom';
 
 const Explore = () => {
-  const [trendingPosts, setTrendingPosts] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const { data: trendingData = [], isLoading: loadingTrending } = useTrendingPostsQuery({ limit: 10 });
-  const { data: usersData = [], isLoading: loadingUsers } = useUsersQuery({ limit: 10 });
+  const [appliedSearch, setAppliedSearch] = useState('');
 
-  useEffect(() => {
-    setTrendingPosts(trendingData);
-  }, [trendingData]);
+  const { data: trendingPosts = [], isLoading: loadingTrending } = useTrendingPostsQuery({ limit: 10 });
+  const { data: users = [], isLoading: loadingUsers } = useUsersQuery(
+    appliedSearch ? { limit: 10, search: appliedSearch } : { limit: 10 }
+  );
 
-  useEffect(() => {
-    setUsers(usersData);
-  }, [usersData]);
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-    
-    try {
-      setLoading(true);
-      const response = await usersAPI.getUsers({ search: searchQuery });
-      setUsers(response.data.data.users);
-    } catch (error) {
-      console.error('Search failed:', error);
-    } finally {
-      setLoading(false);
-    }
+  const handleSearch = () => {
+    setAppliedSearch(searchQuery.trim());
   };
 
-  const handleLikeUpdate = (postId, isLiked, likesCount) => {
-    setTrendingPosts(prev =>
-      prev.map(post =>
-        post._id === postId ? { ...post, isLiked, likesCount } : post
-      )
-    );
-  };
+  const showTrendingSkeleton = loadingTrending && trendingPosts.length === 0;
+  const showUsersSkeleton = loadingUsers && users.length === 0;
+
+  const trendingGrid = useMemo(
+    () => trendingPosts.map((post) => <PostCard key={post._id} post={post} />),
+    [trendingPosts]
+  );
 
   return (
     <Layout>
       <PageContainer paddingY="py-8">
-        {/* Header */}
         <div className="mb-8 space-y-2">
           <h1 className="text-3xl font-bold text-neutral-900 dark:text-neutral-100">
             Explore
@@ -61,13 +42,12 @@ const Explore = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content - Trending Posts */}
           <div className="lg:col-span-2 space-y-6">
             <h2 className="text-2xl font-bold text-neutral-900 dark:text-neutral-100">
               Trending Posts
             </h2>
-            
-            {(loadingTrending || loading) && trendingPosts.length === 0 ? (
+
+            {showTrendingSkeleton ? (
               <div className="space-y-4">
                 {[1, 2, 3].map((i) => (
                   <div
@@ -83,33 +63,23 @@ const Explore = () => {
                 </p>
               </Card>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {trendingPosts.map((post) => (
-                  <PostCard
-                    key={post._id}
-                    post={post}
-                    onLikeUpdate={handleLikeUpdate}
-                  />
-                ))}
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">{trendingGrid}</div>
             )}
           </div>
 
-          {/* Sidebar - Writers */}
           <div className="space-y-6">
             <div>
               <h2 className="text-xl font-bold text-neutral-900 dark:text-neutral-100 mb-4">
                 Discover Writers
               </h2>
 
-              {/* Search */}
               <div className="mb-4">
                 <div className="flex space-x-2">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                     placeholder="Search writers..."
                     className="flex-1 px-4 py-2 rounded-lg border bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-700 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                   />
@@ -121,9 +91,8 @@ const Explore = () => {
                 </div>
               </div>
 
-              {/* Users List */}
               <Card padding="none">
-                {(loadingUsers || loading) && users.length === 0 ? (
+                {showUsersSkeleton ? (
                   <div className="p-4 space-y-4">
                     {[1, 2, 3].map((i) => (
                       <div
@@ -144,11 +113,7 @@ const Explore = () => {
                         to={`/profile/${user.username}`}
                         className="flex items-center space-x-3 p-4 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
                       >
-                        <Avatar
-                          src={user.avatar}
-                          alt={user.fullName}
-                          size="md"
-                        />
+                        <Avatar src={user.avatar} alt={user.fullName} size="md" />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium text-neutral-900 dark:text-neutral-100 truncate">
                             {user.fullName}
@@ -174,4 +139,3 @@ const Explore = () => {
 };
 
 export default Explore;
-

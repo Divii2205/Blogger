@@ -1,24 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../contexts/AuthContext';
 import { usersAPI, followsAPI } from '../utils/api';
-import { useProfileQuery, useUserPostsQuery } from '../features/posts/hooks/usePostQueries';
+import { postKeys, useProfileQuery, useUserPostsQuery } from '../features/posts/hooks/usePostQueries';
 import Layout from '../components/layout/Layout';
 import PageContainer from '../components/layout/PageContainer';
 import PostCard from '../components/PostCard';
 import Avatar from '../components/ui/Avatar';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import FollowersModal from '../components/FollowersModal';
 
 const Profile = () => {
   const { username } = useParams();
   const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
-  const [user, setUser] = useState(null);
-  const [posts, setPosts] = useState([]);
-  const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState('published');
+  const [followersModal, setFollowersModal] = useState(null); // 'followers' | 'following' | null
+
   const { data: profileData, isLoading: loadingProfile } = useProfileQuery(username);
   const { data: userPosts = [], isLoading: loadingPosts } = useUserPostsQuery(
     username,
@@ -26,32 +28,23 @@ const Profile = () => {
     { enabled: activeTab !== 'saved' }
   );
 
-  useEffect(() => {
-    if (!profileData) return;
-    setUser(profileData.user);
-    setIsFollowing(profileData.isFollowing || false);
-  }, [profileData]);
+  // Bookmarks query — only enabled when the saved tab is active and we're
+  // looking at our own profile (server enforces owner-only via the JWT).
+  const isOwnProfile = currentUser?.username === username;
+  const { data: bookmarksData, isLoading: loadingBookmarks } = useQuery({
+    queryKey: ['bookmarks', currentUser?._id],
+    queryFn: async () => (await usersAPI.getBookmarks()).data.data,
+    enabled: activeTab === 'saved' && isOwnProfile,
+  });
 
-  useEffect(() => {
-    if (activeTab !== 'saved') {
-      setPosts(userPosts);
-    }
-  }, [userPosts, activeTab]);
+  const user = profileData?.user || null;
+  const isFollowing = profileData?.isFollowing || false;
 
-  useEffect(() => {
-    const fetchSaved = async () => {
-      if (activeTab !== 'saved') return;
-      try {
-        const response = await usersAPI.getBookmarks();
-        setPosts(response.data.data.posts);
-      } catch (error) {
-        console.error('Failed to fetch saved posts:', error);
-      }
-    };
-    fetchSaved();
-  }, [activeTab]);
+  const posts = activeTab === 'saved'
+    ? bookmarksData?.posts || []
+    : userPosts;
 
-  const loading = loadingProfile || loadingPosts;
+  const loading = loadingProfile || (activeTab === 'saved' ? loadingBookmarks : loadingPosts);
 
   const handleFollow = async () => {
     if (!isAuthenticated) {
@@ -59,44 +52,41 @@ const Profile = () => {
       return;
     }
 
-    const previousIsFollowing = isFollowing;
-    const previousFollowersCount = user.followersCount;
-
-    // Optimistic update
-    setIsFollowing(!isFollowing);
-    setUser(prev => ({
-      ...prev,
-      followersCount: isFollowing ? prev.followersCount - 1 : prev.followersCount + 1,
-    }));
+    // Optimistic patch via the React Query cache so the header updates
+    // instantly. We refresh from the server response below; if that fails
+    // the next refetch / mount will reconcile to the source of truth.
+    queryClient.setQueryData(postKeys.profile(username), (prev) => {
+      if (!prev) return prev;
+      const wasFollowing = prev.isFollowing;
+      return {
+        ...prev,
+        isFollowing: !wasFollowing,
+        user: {
+          ...prev.user,
+          followersCount: (prev.user.followersCount || 0) + (wasFollowing ? -1 : 1),
+        },
+      };
+    });
 
     try {
       const response = await followsAPI.toggleFollow(user._id);
       const serverData = response.data.data;
-      
-      // Update with server data for accuracy
-      setIsFollowing(serverData.isFollowing);
-      setUser(prev => ({
-        ...prev,
-        followersCount: serverData.targetUser.followersCount,
-        followingCount: serverData.targetUser.followingCount
-      }));
+      queryClient.setQueryData(postKeys.profile(username), (prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          isFollowing: serverData.isFollowing,
+          user: {
+            ...prev.user,
+            followersCount: serverData.targetUser.followersCount,
+            followingCount: serverData.targetUser.followingCount,
+          },
+        };
+      });
     } catch (error) {
-      // Revert on error
-      setIsFollowing(previousIsFollowing);
-      setUser(prev => ({
-        ...prev,
-        followersCount: previousFollowersCount,
-      }));
       console.error('Failed to follow user:', error);
+      queryClient.invalidateQueries({ queryKey: postKeys.profile(username) });
     }
-  };
-
-  const handleLikeUpdate = (postId, isLiked, likesCount) => {
-    setPosts(prev =>
-      prev.map(post =>
-        post._id === postId ? { ...post, isLiked, likesCount } : post
-      )
-    );
   };
 
   if (loading) {
@@ -125,26 +115,16 @@ const Profile = () => {
     );
   }
 
-  const isOwnProfile = currentUser?.username === username;
-
   return (
     <Layout>
       <PageContainer paddingY="py-8">
-        {/* Profile Header */}
         <Card className="mb-8">
           <div className="flex flex-col md:flex-row md:items-start gap-5">
-            {/* Avatar */}
             <div className="flex justify-center md:justify-start shrink-0">
-              <Avatar
-                src={user.avatar}
-                alt={user.fullName}
-                size="2xl"
-              />
+              <Avatar src={user.avatar} alt={user.fullName} size="2xl" />
             </div>
 
-            {/* Profile Info */}
             <div className="flex-1 text-center md:text-left space-y-2">
-              {/* Name and Button */}
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div className="space-y-1">
                   <h1 className="text-3xl font-bold tracking-tight text-neutral-900 dark:text-neutral-100">
@@ -157,10 +137,7 @@ const Profile = () => {
 
                 <div className="flex justify-center md:justify-start">
                   {isOwnProfile ? (
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate('/settings')}
-                    >
+                    <Button variant="outline" onClick={() => navigate('/settings')}>
                       Edit Profile
                     </Button>
                   ) : isAuthenticated && (
@@ -180,7 +157,6 @@ const Profile = () => {
                 </p>
               )}
 
-              {/* Location and Website */}
               <div className="flex items-center justify-center md:justify-start flex-wrap gap-4 text-sm">
                 {user.location && (
                   <div className="flex items-center space-x-1 text-neutral-600 dark:text-neutral-400">
@@ -254,64 +230,57 @@ const Profile = () => {
                     Posts
                   </span>
                 </div>
-                <div>
+                <button
+                  type="button"
+                  onClick={() => setFollowersModal('followers')}
+                  className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+                >
                   <span className="font-bold text-neutral-900 dark:text-neutral-100">
                     {user.followersCount || 0}
                   </span>
                   <span className="text-neutral-600 dark:text-neutral-400 ml-1">
                     Followers
                   </span>
-                </div>
-                <div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFollowersModal('following')}
+                  className="hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+                >
                   <span className="font-bold text-neutral-900 dark:text-neutral-100">
                     {user.followingCount || 0}
                   </span>
                   <span className="text-neutral-600 dark:text-neutral-400 ml-1">
                     Following
                   </span>
-                </div>
+                </button>
               </div>
             </div>
           </div>
         </Card>
 
-        {/* Tabs */}
         {isOwnProfile && (
           <div className="flex space-x-2 mb-6 border-b border-neutral-200 dark:border-neutral-800">
-            <button
-              onClick={() => setActiveTab('published')}
-              className={`px-4 py-2 font-medium transition-colors border-b-2 ${
-                activeTab === 'published'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
-              }`}
-            >
-              Published
-            </button>
-            <button
-              onClick={() => setActiveTab('draft')}
-              className={`px-4 py-2 font-medium transition-colors border-b-2 ${
-                activeTab === 'draft'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
-              }`}
-            >
-              Drafts
-            </button>
-            <button
-              onClick={() => setActiveTab('saved')}
-              className={`px-4 py-2 font-medium transition-colors border-b-2 ${
-                activeTab === 'saved'
-                  ? 'border-primary-600 text-primary-600'
-                  : 'border-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
-              }`}
-            >
-              Saved
-            </button>
+            {[
+              { key: 'published', label: 'Published' },
+              { key: 'draft', label: 'Drafts' },
+              { key: 'saved', label: 'Saved' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`px-4 py-2 font-medium transition-colors border-b-2 ${
+                  activeTab === key
+                    ? 'border-primary-600 text-primary-600'
+                    : 'border-transparent text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         )}
 
-        {/* Posts */}
         {posts.length === 0 ? (
           <Card>
             <div className="text-center py-12">
@@ -331,7 +300,7 @@ const Profile = () => {
               <h3 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 mb-2">
                 {activeTab === 'saved' ? 'No saved posts' : 'No posts yet'}
               </h3>
-              {isOwnProfile && (
+              {isOwnProfile && activeTab !== 'saved' && (
                 <Button
                   variant="primary"
                   className="mt-4"
@@ -345,18 +314,20 @@ const Profile = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {posts.map((post) => (
-              <PostCard
-                key={post._id}
-                post={post}
-                onLikeUpdate={handleLikeUpdate}
-              />
+              <PostCard key={post._id} post={post} />
             ))}
           </div>
         )}
       </PageContainer>
+
+      <FollowersModal
+        open={followersModal !== null}
+        onClose={() => setFollowersModal(null)}
+        username={username}
+        mode={followersModal || 'followers'}
+      />
     </Layout>
   );
 };
 
 export default Profile;
-
