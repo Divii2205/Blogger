@@ -47,6 +47,11 @@ const getPostsByUsername = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "User posts fetched successfully");
 });
 
+const getPopularTags = asyncHandler(async (req, res) => {
+  const result = await postService.getPopularTags(req.query);
+  return sendSuccess(res, result, "Popular tags fetched successfully");
+});
+
 module.exports = {
   getPosts,
   getTrendingPosts,
@@ -57,4 +62,5 @@ module.exports = {
   updatePost,
   deletePost,
   getPostsByUsername,
+  getPopularTags,
 };

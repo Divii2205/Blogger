@@ -4,6 +4,7 @@ import { usePostsListQuery } from '../features/posts/hooks/usePostQueries';
 import Layout from '../components/layout/Layout';
 import PageContainer from '../components/layout/PageContainer';
 import PostCard from '../components/PostCard';
+import PostsSearchBar from '../components/PostsSearchBar';
 import Button from '../components/ui/Button';
 
 const Home = () => {
@@ -12,18 +13,23 @@ const Home = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [sortBy, setSortBy] = useState('publishedAt');
+  const [filters, setFilters] = useState({ q: '', tag: '' });
 
   const { data, isLoading: loading } = usePostsListQuery({
     page,
     limit: 10,
     sortBy,
     order: 'desc',
+    ...(filters.q ? { q: filters.q } : {}),
+    ...(filters.tag ? { tag: filters.tag } : {}),
   });
 
+  // Reset pagination whenever the filter or sort changes — otherwise loading
+  // page 2 with new filters appends a different result set on top of the old.
   useEffect(() => {
     setPosts([]);
     setPage(1);
-  }, [sortBy]);
+  }, [sortBy, filters.q, filters.tag]);
 
   useEffect(() => {
     if (!data) return;
@@ -62,6 +68,12 @@ const Home = () => {
             </div>
           )}
         </div>
+
+        <PostsSearchBar
+          query={filters.q}
+          tag={filters.tag}
+          onChange={setFilters}
+        />
 
         {/* Posts Grid */}
         {loading && page === 1 ? (

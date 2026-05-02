@@ -55,10 +55,11 @@ const commentSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better performance
 commentSchema.index({ post: 1, createdAt: -1 });
 commentSchema.index({ author: 1 });
 commentSchema.index({ parentComment: 1 });
+// Backs atomic isCommentLikedBy checks used by likeService.
+commentSchema.index({ "likes.user": 1 });
 
 // Update likes count
 commentSchema.methods.updateLikesCount = function() {

@@ -94,19 +94,26 @@ const Editor = () => {
     const autosaveKey = editId
       ? `editor-autosave-${editId}`
       : "editor-autosave-new";
-    if (
+    const hasContent =
       formData.title ||
       formData.content ||
       formData.excerpt ||
       formData.tags ||
-      formData.featuredImage
-    ) {
+      formData.featuredImage;
+    if (!hasContent) return undefined;
+
+    // Debounce so a user typing a sentence doesn't trigger 50+ JSON.stringify
+    // + localStorage writes. The cleanup cancels the pending write when the
+    // user keeps typing.
+    const handle = setTimeout(() => {
       localStorage.setItem(
         autosaveKey,
         JSON.stringify({ formData, publishSettings, timestamp: Date.now() }),
       );
       setLastSavedAt(new Date());
-    }
+    }, 800);
+
+    return () => clearTimeout(handle);
   }, [formData, publishSettings, editId]);
 
   const handleChange = (e) => {

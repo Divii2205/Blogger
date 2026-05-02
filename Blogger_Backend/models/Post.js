@@ -19,8 +19,6 @@ const postSchema = new mongoose.Schema({
   },
   slug: {
     type: String,
-    unique: true,
-    index: true
   },
   content: {
     type: String,
@@ -113,13 +111,17 @@ const postSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Indexes for better performance
 postSchema.index({ author: 1, createdAt: -1 });
 postSchema.index({ status: 1, publishedAt: -1 });
 postSchema.index({ tags: 1 });
 postSchema.index({ likesCount: -1 });
 postSchema.index({ views: -1 });
-postSchema.index({ slug: 1 }, { unique: true });
+// `sparse` so untitled drafts (slug = undefined) don't collide on the
+// unique index. Single source for the slug index — the schema field used to
+// re-declare it via `unique: true` and `index: true`, tripping warnings.
+postSchema.index({ slug: 1 }, { unique: true, sparse: true });
+// Backs atomic isPostLikedBy checks used by likeService.
+postSchema.index({ "likes.user": 1 });
 
 // Calculate reading time before saving
 postSchema.pre('save', function(next) {

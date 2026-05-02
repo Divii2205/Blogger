@@ -23,6 +23,11 @@ const Settings = () => {
     bio: user?.bio || '',
     location: user?.location || '',
     website: user?.website || '',
+    socialLinks: {
+      twitter: user?.socialLinks?.twitter || '',
+      github: user?.socialLinks?.github || '',
+      linkedin: user?.socialLinks?.linkedin || '',
+    },
   });
 
   const [avatarUrl, setAvatarUrl] = useState('');
@@ -44,6 +49,14 @@ const Settings = () => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+  };
+
+  const handleSocialLinkChange = (key, value) => {
+    setProfileData(prev => ({
+      ...prev,
+      socialLinks: { ...prev.socialLinks, [key]: value },
+    }));
+    setSuccess('');
   };
 
   const handleProfileSubmit = async (e) => {
@@ -239,6 +252,35 @@ const Settings = () => {
                     placeholder="https://yourwebsite.com"
                     type="url"
                   />
+
+                  <div className="pt-4 border-t border-neutral-200 dark:border-neutral-800">
+                    <h3 className="text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-3">
+                      Social Links
+                    </h3>
+                    <div className="space-y-4">
+                      <Input
+                        label="Twitter / X"
+                        value={profileData.socialLinks.twitter}
+                        onChange={(e) => handleSocialLinkChange('twitter', e.target.value)}
+                        placeholder="https://twitter.com/yourhandle"
+                        type="url"
+                      />
+                      <Input
+                        label="GitHub"
+                        value={profileData.socialLinks.github}
+                        onChange={(e) => handleSocialLinkChange('github', e.target.value)}
+                        placeholder="https://github.com/yourhandle"
+                        type="url"
+                      />
+                      <Input
+                        label="LinkedIn"
+                        value={profileData.socialLinks.linkedin}
+                        onChange={(e) => handleSocialLinkChange('linkedin', e.target.value)}
+                        placeholder="https://linkedin.com/in/yourhandle"
+                        type="url"
+                      />
+                    </div>
+                  </div>
 
                   <div className="flex justify-end">
                     <Button

@@ -12,6 +12,7 @@ export const postKeys = {
   comments: (postId) => [...postKeys.all, "comments", postId],
   users: (params) => ["users", params],
   profile: (username) => ["profile", username],
+  popularTags: (params) => [...postKeys.all, "popularTags", params],
 };
 
 export const usePostsListQuery = (params) =>
@@ -66,9 +67,16 @@ export const useProfileQuery = (username) =>
     enabled: Boolean(username),
   });
 
-export const useUserPostsQuery = (username, params) =>
+export const useUserPostsQuery = (username, params, options = {}) =>
   useQuery({
     queryKey: postKeys.byUser(username, params),
     queryFn: async () => (await postsAPI.getUserPosts(username, params)).data.data.posts,
-    enabled: Boolean(username),
+    enabled: Boolean(username) && options.enabled !== false,
+  });
+
+export const usePopularTagsQuery = (params = { limit: 20 }) =>
+  useQuery({
+    queryKey: postKeys.popularTags(params),
+    queryFn: async () => (await postsAPI.getPopularTags(params)).data.data.tags,
+    staleTime: 5 * 60 * 1000,
   });

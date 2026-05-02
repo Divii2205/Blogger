@@ -10,6 +10,10 @@ const withLikeStatus = (post, userId) => {
   return postObj;
 };
 
+// Escape user input before stuffing it into a regex so a title query like
+// "node.js (v20)" doesn't blow up regex compilation or match unintended docs.
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 const listPublishedPosts = async (queryParams, authUser) => {
   const { page, limit, skip } = parsePagination(queryParams);
   const sortBy = queryParams.sortBy || "publishedAt";
@@ -18,6 +22,11 @@ const listPublishedPosts = async (queryParams, authUser) => {
 
   if (queryParams.tag) {
     query.tags = { $in: [queryParams.tag.toLowerCase()] };
+  }
+
+  const q = (queryParams.q || "").trim();
+  if (q) {
+    query.title = { $regex: escapeRegExp(q), $options: "i" };
   }
 
   if (queryParams.author) {
@@ -54,8 +63,17 @@ const listTrendingPosts = async (queryParams, authUser) => {
   const date = new Date();
   date.setDate(date.getDate() - timeframe);
 
+  const query = { status: "published", publishedAt: { $gte: date } };
+  if (queryParams.tag) {
+    query.tags = { $in: [queryParams.tag.toLowerCase()] };
+  }
+  const q = (queryParams.q || "").trim();
+  if (q) {
+    query.title = { $regex: escapeRegExp(q), $options: "i" };
+  }
+
   const posts = await postRepository.findPosts(
-    { status: "published", publishedAt: { $gte: date } },
+    query,
     { likesCount: -1, views: -1, publishedAt: -1 },
     0,
     limit
@@ -69,10 +87,25 @@ const listFeedPosts = async (queryParams, authUser) => {
   const user = await postRepository.findUserFollowing(authUser._id);
   const followingIds = user?.following || [];
 
-  const query =
-    followingIds.length === 0
-      ? { status: "published" }
-      : { author: { $in: followingIds }, status: "published" };
+  if (followingIds.length === 0) {
+    return {
+      posts: [],
+      pagination: { page, limit, total: 0, pages: 0 },
+    };
+  }
+
+  const query = {
+    author: { $in: followingIds, $ne: authUser._id },
+    status: "published",
+  };
+
+  if (queryParams.tag) {
+    query.tags = { $in: [queryParams.tag.toLowerCase()] };
+  }
+  const q = (queryParams.q || "").trim();
+  if (q) {
+    query.title = { $regex: escapeRegExp(q), $options: "i" };
+  }
 
   const [posts, total] = await Promise.all([
     postRepository.findPosts(query, { publishedAt: -1 }, skip, limit),
@@ -85,12 +118,22 @@ const listFeedPosts = async (queryParams, authUser) => {
   };
 };
 
+// Authors viewing their own posts shouldn't pad their view count; everyone
+// else does. Increment is atomic so concurrent reads can't drop a count.
+const maybeIncrementViews = async (post, authUser) => {
+  const isAuthor =
+    authUser && post.author?._id?.toString() === authUser._id.toString();
+  if (isAuthor) return;
+  await postRepository.incrementViews(post._id);
+  post.views = (post.views || 0) + 1;
+};
+
 const getPostById = async (id, authUser) => {
   const post = await postRepository.findPostById(id);
   if (!post) {
     throw new AppError("Post not found", 404);
   }
-  await post.incrementViews();
+  await maybeIncrementViews(post, authUser);
   return withLikeStatus(post, authUser?._id);
 };
 
@@ -99,7 +142,7 @@ const getPostBySlug = async (slug, authUser) => {
   if (!post) {
     throw new AppError("Post not found", 404);
   }
-  await post.incrementViews();
+  await maybeIncrementViews(post, authUser);
   return withLikeStatus(post, authUser?._id);
 };
 
@@ -158,7 +201,7 @@ const deletePost = async (postId, authUser) => {
     throw new AppError("Not authorized to delete this post", 403);
   }
 
-  await postRepository.deletePostById(postId);
+  await postRepository.cascadeDeletePost(postId);
   await postRepository.incrementUserPostCount(authUser._id, -1);
 };
 
@@ -166,7 +209,12 @@ const getPostsByUsername = async (username, queryParams, authUser) => {
   const user = await postRepository.findAuthorByUsername(username);
   if (!user) throw new AppError("User not found", 404);
   const { page, limit, skip } = parsePagination(queryParams);
-  const status = queryParams.status || "published";
+
+  const isOwner =
+    authUser && authUser._id.toString() === user._id.toString();
+  const requestedStatus = queryParams.status || "published";
+  const status = isOwner ? requestedStatus : "published";
+
   const query = { author: user._id };
   if (status !== "all") {
     query.status = status;
@@ -183,6 +231,12 @@ const getPostsByUsername = async (username, queryParams, authUser) => {
   };
 };
 
+const getPopularTags = async (queryParams) => {
+  const limit = Math.max(1, Math.min(50, parseInt(queryParams.limit, 10) || 20));
+  const tags = await postRepository.aggregatePopularTags(limit);
+  return { tags };
+};
+
 module.exports = {
   listPublishedPosts,
   listTrendingPosts,
@@ -193,4 +247,5 @@ module.exports = {
   updatePost,
   deletePost,
   getPostsByUsername,
+  getPopularTags,
 };

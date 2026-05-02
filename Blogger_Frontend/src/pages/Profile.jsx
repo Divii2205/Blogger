@@ -20,7 +20,11 @@ const Profile = () => {
   const [isFollowing, setIsFollowing] = useState(false);
   const [activeTab, setActiveTab] = useState('published');
   const { data: profileData, isLoading: loadingProfile } = useProfileQuery(username);
-  const { data: userPosts = [], isLoading: loadingPosts } = useUserPostsQuery(username, { status: activeTab });
+  const { data: userPosts = [], isLoading: loadingPosts } = useUserPostsQuery(
+    username,
+    { status: activeTab },
+    { enabled: activeTab !== 'saved' }
+  );
 
   useEffect(() => {
     if (!profileData) return;

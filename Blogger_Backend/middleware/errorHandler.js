@@ -13,11 +13,21 @@ const errorHandler = (err, req, res, next) => {
     });
   }
 
+  // err.details is structured payload meant for the client (e.g. validation
+  // errors) — always send it. Stack traces are debug-only, dev environments
+  // only.
+  let details;
+  if (err.details !== undefined && err.details !== null) {
+    details = err.details;
+  } else if (process.env.NODE_ENV === "development" && !isOperational) {
+    details = err.stack;
+  }
+
   return sendError(
     res,
     err.message || "Internal server error",
     statusCode,
-    process.env.NODE_ENV === "development" ? err.details || err.stack : undefined
+    details
   );
 };
 

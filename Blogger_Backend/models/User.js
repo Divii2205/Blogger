@@ -48,6 +48,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  socialLinks: {
+    twitter: { type: String, default: '' },
+    github: { type: String, default: '' },
+    linkedin: { type: String, default: '' },
+  },
   isVerified: {
     type: Boolean,
     default: false
@@ -109,9 +114,13 @@ const userSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Index for better performance
-userSchema.index({ username: 1 });
-userSchema.index({ email: 1 });
+// `unique: true` on username and email already creates indexes; declaring
+// them again here used to trip Mongoose duplicate-index warnings at boot.
+// These indexes back the new atomic follow + cascade-delete queries.
+userSchema.index({ following: 1 });
+userSchema.index({ followers: 1 });
+userSchema.index({ likedPosts: 1 });
+userSchema.index({ savedPosts: 1 });
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {

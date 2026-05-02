@@ -59,6 +59,7 @@ export const postsAPI = {
   getPosts: (params) => api.get('/posts', { params }),
   getFeed: (params) => api.get('/posts/feed', { params }),
   getTrending: (params) => api.get('/posts/trending', { params }),
+  getPopularTags: (params) => api.get('/posts/tags', { params }),
   getPost: (id) => api.get(`/posts/${id}`),
   getPostBySlug: (slug) => api.get(`/posts/slug/${slug}`),
   createPost: (data) => api.post('/posts', data),

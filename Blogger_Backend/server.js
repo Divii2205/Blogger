@@ -35,8 +35,10 @@ const allowedOrigins = [
   'http://localhost:3003',
   'http://localhost:3004',
   'https://blogger-tau-five.vercel.app',
-  process.env.CLIENT_URL
-].filter(Boolean);
+  process.env.CLIENT_URL,
+]
+  .filter(Boolean)
+  .map((origin) => origin.replace(/\/$/, ''));
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -64,13 +66,10 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(requestLogger);
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/blogger_platform', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => console.error('MongoDB connection error:', err));
+// `useNewUrlParser` / `useUnifiedTopology` are deprecated no-ops in
+// Mongoose >=6 and were spamming warnings on every boot.
+const mongoUri =
+  process.env.MONGODB_URI || 'mongodb://localhost:27017/blogger_platform';
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -125,7 +124,19 @@ app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-});
+// Don't accept traffic until Mongo is connected. The previous version
+// listened immediately and just logged a connection error, so requests
+// arriving during a Mongo outage would hang on the first model query.
+mongoose
+  .connect(mongoUri)
+  .then(() => {
+    console.log('MongoDB connected successfully');
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  })
+  .catch((err) => {
+    console.error('MongoDB connection error:', err);
+    process.exit(1);
+  });

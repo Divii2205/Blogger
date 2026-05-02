@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { authAPI } from '../utils/api';
 
 const AuthContext = createContext(null);
@@ -15,6 +16,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState(localStorage.getItem('token'));
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const initAuth = async () => {
@@ -43,21 +45,30 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  // Clear all cached queries when the active user changes. Otherwise feeds,
+  // post detail, and bookmark state from the previous session render
+  // instantly on login (cache hit) and only flip to the new user's view
+  // after a background refetch — leaking the previous user's like/save state.
+  const resetCache = () => {
+    queryClient.clear();
+  };
+
   const login = async (credentials) => {
     try {
       const response = await authAPI.login(credentials);
       const { user: userData, token: authToken } = response.data.data;
-      
+
+      resetCache();
       setUser(userData);
       setToken(authToken);
       localStorage.setItem('token', authToken);
       localStorage.setItem('user', JSON.stringify(userData));
-      
+
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Login failed' 
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Login failed'
       };
     }
   };
@@ -66,22 +77,24 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.register(userData);
       const { user: newUser, token: authToken } = response.data.data;
-      
+
+      resetCache();
       setUser(newUser);
       setToken(authToken);
       localStorage.setItem('token', authToken);
       localStorage.setItem('user', JSON.stringify(newUser));
-      
+
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        message: error.response?.data?.message || 'Registration failed' 
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Registration failed'
       };
     }
   };
 
   const logout = () => {
+    resetCache();
     setUser(null);
     setToken(null);
     localStorage.removeItem('token');

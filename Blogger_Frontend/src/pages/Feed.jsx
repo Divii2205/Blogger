@@ -3,14 +3,26 @@ import { useFeedPostsQuery } from '../features/posts/hooks/usePostQueries';
 import Layout from '../components/layout/Layout';
 import PageContainer from '../components/layout/PageContainer';
 import PostCard from '../components/PostCard';
+import PostsSearchBar from '../components/PostsSearchBar';
 import Button from '../components/ui/Button';
 
 const Feed = () => {
   const [posts, setPosts] = useState([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
+  const [filters, setFilters] = useState({ q: '', tag: '' });
 
-  const { data, isLoading: loading } = useFeedPostsQuery({ page, limit: 10 });
+  const { data, isLoading: loading } = useFeedPostsQuery({
+    page,
+    limit: 10,
+    ...(filters.q ? { q: filters.q } : {}),
+    ...(filters.tag ? { tag: filters.tag } : {}),
+  });
+
+  useEffect(() => {
+    setPosts([]);
+    setPage(1);
+  }, [filters.q, filters.tag]);
 
   useEffect(() => {
     if (!data) return;
@@ -42,6 +54,13 @@ const Feed = () => {
             Posts from writers you follow
           </p>
         </div>
+
+        <PostsSearchBar
+          query={filters.q}
+          tag={filters.tag}
+          onChange={setFilters}
+          placeholder="Search your feed by title..."
+        />
 
         {/* Posts */}
         {loading && page === 1 ? (

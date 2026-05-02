@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "../contexts/AuthContext";
 import DOMPurify from "dompurify";
 import { marked } from "marked";
@@ -14,6 +15,7 @@ import {
   usePostDetailQuery,
   usePostCommentsQuery,
   usePostBySlugQuery,
+  postKeys,
 } from "../features/posts/hooks/usePostQueries";
 import Layout from "../components/layout/Layout";
 import PageContainer from "../components/layout/PageContainer";
@@ -27,6 +29,7 @@ const PostView = () => {
   const { id, slug } = useParams();
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [post, setPost] = useState(null);
   const [comments, setComments] = useState([]);
@@ -68,9 +71,12 @@ const PostView = () => {
   useEffect(() => {
     if (!postData?.slug) return;
     if (!isSlugRoute) {
+      // Seed the slug query cache so the post-redirect render doesn't refetch
+      // the same post (which would also double-increment server-side views).
+      queryClient.setQueryData(postKeys.detailBySlug(postData.slug), postData);
       navigate(`/p/${postData.slug}`, { replace: true });
     }
-  }, [postData, isSlugRoute, navigate]);
+  }, [postData, isSlugRoute, navigate, queryClient]);
 
   useEffect(() => {
     setComments(commentsData);
