@@ -8,6 +8,7 @@ const {
 const {
   register,
   login,
+  googleSignIn,
   getCurrentUser,
   logout,
   refreshToken,
@@ -17,6 +18,7 @@ const router = express.Router();
 
 router.post("/register", registerValidation, validateRequest, register);
 router.post("/login", loginValidation, validateRequest, login);
+router.post("/google", googleSignIn);
 router.get("/me", protect, getCurrentUser);
 router.post("/logout", protect, logout);
 router.post("/refresh", protect, refreshToken);

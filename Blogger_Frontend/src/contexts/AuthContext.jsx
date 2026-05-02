@@ -73,6 +73,26 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleSignIn = async (credential) => {
+    try {
+      const response = await authAPI.googleSignIn(credential);
+      const { user: userData, token: authToken } = response.data.data;
+
+      resetCache();
+      setUser(userData);
+      setToken(authToken);
+      localStorage.setItem('token', authToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+
+      return { success: true };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Google sign-in failed'
+      };
+    }
+  };
+
   const register = async (userData) => {
     try {
       const response = await authAPI.register(userData);
@@ -111,6 +131,7 @@ export const AuthProvider = ({ children }) => {
     token,
     loading,
     login,
+    googleSignIn,
     register,
     logout,
     updateUser,

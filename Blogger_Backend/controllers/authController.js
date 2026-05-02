@@ -12,6 +12,11 @@ const login = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, "Login successful");
 });
 
+const googleSignIn = asyncHandler(async (req, res) => {
+  const result = await authService.googleSignIn(req.body.credential);
+  return sendSuccess(res, result, "Google sign-in successful");
+});
+
 const getCurrentUser = asyncHandler(async (req, res) => {
   const user = await authService.getCurrentUser(req.user);
   return sendSuccess(res, { user }, "Current user fetched");
@@ -26,4 +31,4 @@ const refreshToken = asyncHandler(async (req, res) => {
   return sendSuccess(res, { token }, "Token refreshed");
 });
 
-module.exports = { register, login, getCurrentUser, logout, refreshToken };
+module.exports = { register, login, googleSignIn, getCurrentUser, logout, refreshToken };

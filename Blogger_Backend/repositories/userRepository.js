@@ -7,6 +7,10 @@ const findByIdWithoutPassword = (id) => User.findById(id).select("-password");
 const findByEmailWithPassword = (email) =>
   User.findOne({ email }).select("+password");
 
+const findByEmail = (email) => User.findOne({ email });
+
+const findByGoogleId = (googleId) => User.findOne({ googleId });
+
 const findByUsername = (username) => User.findOne({ username });
 
 const findExistingByEmailOrUsername = (email, username) =>
@@ -24,6 +28,8 @@ module.exports = {
   findById,
   findByIdWithoutPassword,
   findByEmailWithPassword,
+  findByEmail,
+  findByGoogleId,
   findByUsername,
   findExistingByEmailOrUsername,
   createUser,

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
@@ -16,8 +18,23 @@ const Register = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const { register } = useAuth();
+  const { register, googleSignIn } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setErrors({});
+    const result = await googleSignIn(credentialResponse.credential);
+    if (result.success) {
+      navigate('/', { replace: true });
+    } else {
+      setErrors({ general: result.message });
+    }
+  };
+
+  const handleGoogleError = () => {
+    setErrors({ general: 'Google sign-up failed. Please try again.' });
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -210,16 +227,17 @@ const Register = () => {
               </div>
             </div>
 
-            <button
-              type="button"
-              className="mt-4 w-full flex justify-center items-center py-2.5 px-4 border border-neutral-300 dark:border-neutral-700 rounded-lg shadow-sm bg-white dark:bg-neutral-900 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors"
-              onClick={() => alert("Social login coming soon!")}
-            >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                <path fill="currentColor" d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.761H12.545z"/>
-              </svg>
-              Google
-            </button>
+            <div className="mt-4 flex justify-center">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                theme={theme === 'dark' ? 'filled_black' : 'outline'}
+                size="large"
+                width="320"
+                text="signup_with"
+                shape="rectangular"
+              />
+            </div>
           </form>
 
           <div className="mt-6 text-center">
