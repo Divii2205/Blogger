@@ -204,6 +204,13 @@ Blogger/
 - **Frontend**: [https://blogger-tau-five.vercel.app](https://blogger-tau-five.vercel.app)
 - **Backend API**: [https://blogger-l1tj.onrender.com](https://blogger-l1tj.onrender.com)
 
+<img width="1907" height="907" alt="Home Page Dark Mode" src="https://github.com/user-attachments/assets/cec196dc-5553-4030-95ee-c83f29d435d0" />
+<img width="1917" height="912" alt="Home Page Blogger" src="https://github.com/user-attachments/assets/492a6a01-1ee6-4637-931a-e92161543b15" />
+<img width="1918" height="912" alt="Post" src="https://github.com/user-attachments/assets/7550a269-2dd1-4c10-9393-644551c49ddd" />
+<img width="1910" height="911" alt="Profile" src="https://github.com/user-attachments/assets/d4dda67c-3200-415d-93ed-7be96c80da27" />
+
+
+
 ## 📄 License
 
 - ISC License
