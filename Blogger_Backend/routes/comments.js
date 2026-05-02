@@ -1,5 +1,5 @@
 const express = require("express");
-const { protect } = require("../middleware/auth");
+const { protect, optionalAuth } = require("../middleware/auth");
 const validateRequest = require("../middleware/validateRequest");
 const {
   createCommentValidation,
@@ -16,8 +16,9 @@ const {
 
 const router = express.Router();
 
-// Specific paths first.
-router.get("/post/:postId", getPostComments);
+// Specific paths first. optionalAuth so the response can include each
+// comment's `isLiked` flag for the current viewer when one is signed in.
+router.get("/post/:postId", optionalAuth, getPostComments);
 
 router.post("/", protect, createCommentValidation, validateRequest, createComment);
 router.put(

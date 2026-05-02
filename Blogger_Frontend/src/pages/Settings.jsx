@@ -8,6 +8,7 @@ import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
 import Button from '../components/ui/Button';
 import Card from '../components/ui/Card';
+import ImageEditor from '../components/ImageEditor';
 
 const Settings = () => {
   const { user, updateUser } = useAuth();
@@ -79,21 +80,28 @@ const Settings = () => {
   };
 
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const handleAvatarFileChange = async (e) => {
+  const [pendingAvatar, setPendingAvatar] = useState(null);
+
+  const handleAvatarFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    
+
     if (!file.type.startsWith('image/')) {
       setErrors({ avatar: 'Please select a valid image file' });
       return;
     }
 
-    setUploadingAvatar(true);
+    e.target.value = '';
     setErrors({});
-    
+    setPendingAvatar(file);
+  };
+
+  const handleAvatarEditorConfirm = async (editedFile) => {
+    setPendingAvatar(null);
+    setUploadingAvatar(true);
     try {
       const fd = new FormData();
-      fd.append('image', file);
+      fd.append('image', editedFile);
       const response = await uploadAPI.uploadImage(fd);
       if (response.data.success) {
         setAvatarUrl(response.data.data.url);
@@ -155,6 +163,14 @@ const Settings = () => {
 
   return (
     <Layout>
+      {pendingAvatar && (
+        <ImageEditor
+          file={pendingAvatar}
+          aspect={1}
+          onConfirm={handleAvatarEditorConfirm}
+          onCancel={() => setPendingAvatar(null)}
+        />
+      )}
       <PageContainer paddingY="py-8">
         {/* Header */}
         <div className="mb-8 space-y-2">

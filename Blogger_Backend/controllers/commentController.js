@@ -6,7 +6,8 @@ const likeService = require("../services/likeService");
 const getPostComments = asyncHandler(async (req, res) => {
   const result = await commentService.getPostComments(
     req.params.postId,
-    req.query
+    req.query,
+    req.user
   );
   return sendSuccess(res, result, "Comments fetched successfully");
 });

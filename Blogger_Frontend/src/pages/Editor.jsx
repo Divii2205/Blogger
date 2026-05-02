@@ -7,6 +7,7 @@ import Input from "../components/ui/Input";
 import Textarea from "../components/ui/Textarea";
 import Button from "../components/ui/Button";
 import Card from "../components/ui/Card";
+import ImageEditor from "../components/ImageEditor";
 
 const Editor = () => {
   const [searchParams] = useSearchParams();
@@ -23,6 +24,7 @@ const Editor = () => {
   });
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [pendingImage, setPendingImage] = useState(null);
   const [errors, setErrors] = useState({});
   const [isEditMode, setIsEditMode] = useState(false);
   const [previewMode, setPreviewMode] = useState(false);
@@ -124,22 +126,27 @@ const Editor = () => {
     }
   };
 
-  const handleImageUpload = async (e) => {
+  const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Quick validation
     if (!file.type.startsWith("image/")) {
       setErrors({ general: "Please select a valid image file" });
       return;
     }
 
-    setUploadingImage(true);
+    // Reset the input so picking the same file twice still triggers change.
+    e.target.value = "";
     setErrors((prev) => ({ ...prev, general: "" }));
+    setPendingImage(file);
+  };
 
+  const handleEditorConfirm = async (editedFile) => {
+    setPendingImage(null);
+    setUploadingImage(true);
     try {
       const fd = new FormData();
-      fd.append("image", file);
+      fd.append("image", editedFile);
       const response = await uploadAPI.uploadImage(fd);
       if (response.data.success) {
         setFormData((prev) => ({
@@ -211,6 +218,14 @@ const Editor = () => {
 
   return (
     <Layout>
+      {pendingImage && (
+        <ImageEditor
+          file={pendingImage}
+          aspect={16 / 9}
+          onConfirm={handleEditorConfirm}
+          onCancel={() => setPendingImage(null)}
+        />
+      )}
       <PageContainer paddingY="py-8">
         {/* Header */}
         <div className="mb-8 space-y-2">

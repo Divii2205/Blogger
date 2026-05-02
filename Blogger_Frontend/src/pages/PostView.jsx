@@ -24,6 +24,7 @@ import Button from "../components/ui/Button";
 import Badge from "../components/ui/Badge";
 import Card from "../components/ui/Card";
 import Textarea from "../components/ui/Textarea";
+import Comment from "../components/Comment";
 
 const PostView = () => {
   const { id, slug } = useParams();
@@ -32,7 +33,6 @@ const PostView = () => {
   const queryClient = useQueryClient();
 
   const [post, setPost] = useState(null);
-  const [comments, setComments] = useState([]);
   const [commentText, setCommentText] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
@@ -49,8 +49,11 @@ const PostView = () => {
   );
   const postData = isSlugRoute ? postBySlugData : postByIdData;
   const effectivePostId = postData?._id || id;
-  const { data: commentsData = [], isLoading: loadingComments } =
+  const { data: comments = [], isLoading: loadingComments } =
     usePostCommentsQuery(effectivePostId);
+
+  const refreshComments = () =>
+    queryClient.invalidateQueries({ queryKey: postKeys.comments(effectivePostId) });
 
   useEffect(() => {
     if (user && user.savedPosts && effectivePostId) {
@@ -77,10 +80,6 @@ const PostView = () => {
       navigate(`/p/${postData.slug}`, { replace: true });
     }
   }, [postData, isSlugRoute, navigate, queryClient]);
-
-  useEffect(() => {
-    setComments(commentsData);
-  }, [commentsData]);
 
   const loading = loadingById || loadingBySlug || loadingComments;
 
@@ -245,14 +244,13 @@ const PostView = () => {
 
     setSubmittingComment(true);
     try {
-      const response = await commentsAPI.createComment({
+      await commentsAPI.createComment({
         content: commentText,
         postId: effectivePostId,
       });
-
-      setComments([response.data.data.comment, ...comments]);
       setCommentText("");
-      setPost((prev) => ({ ...prev, commentsCount: prev.commentsCount + 1 }));
+      setPost((prev) => ({ ...prev, commentsCount: (prev.commentsCount || 0) + 1 }));
+      refreshComments();
     } catch (error) {
       console.error("Failed to post comment:", error);
     } finally {
@@ -550,29 +548,7 @@ const PostView = () => {
               ) : (
                 comments.map((comment) => (
                   <Card key={comment._id}>
-                    <div className="flex space-x-3">
-                      <Avatar
-                        src={comment.author.avatar}
-                        alt={comment.author.fullName}
-                        size="sm"
-                      />
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <Link
-                            to={`/profile/${comment.author.username}`}
-                            className="font-medium text-neutral-900 dark:text-neutral-100 hover:text-primary-600"
-                          >
-                            {comment.author.fullName}
-                          </Link>
-                          <span className="text-sm text-neutral-500 dark:text-neutral-400">
-                            {formatDate(comment.createdAt)}
-                          </span>
-                        </div>
-                        <p className="text-neutral-700 dark:text-neutral-300">
-                          {comment.content}
-                        </p>
-                      </div>
-                    </div>
+                    <Comment comment={comment} onMutated={refreshComments} />
                   </Card>
                 ))
               )}

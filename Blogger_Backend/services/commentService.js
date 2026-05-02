@@ -3,20 +3,40 @@ const { parsePagination } = require("../utils/query");
 const Post = require("../models/Post");
 const commentRepository = require("../repositories/commentRepository");
 
-const getPostComments = async (postId, queryParams) => {
+// Stamp `isLiked` onto each comment (and its replies) for the current
+// viewer so the UI can render filled/empty heart icons without an extra
+// round trip per comment. Iterating in JS is fine — replies are bounded.
+const decorateWithLikeStatus = (comments, authUser) => {
+  if (!authUser) return comments;
+  const userId = authUser._id.toString();
+  const stamp = (comment) => {
+    if (!comment) return comment;
+    const obj = comment.toObject ? comment.toObject() : comment;
+    obj.isLiked = (obj.likes || []).some(
+      (like) => like.user?.toString() === userId
+    );
+    if (Array.isArray(obj.replies)) {
+      obj.replies = obj.replies.map(stamp);
+    }
+    return obj;
+  };
+  return comments.map(stamp);
+};
+
+const getPostComments = async (postId, queryParams, authUser) => {
   const { page, limit, skip } = parsePagination(queryParams, {
     page: 1,
     limit: 20,
     maxLimit: 50,
   });
 
-  const [comments, total] = await Promise.all([
+  const [rawComments, total] = await Promise.all([
     commentRepository.findTopLevelByPost(postId, skip, limit),
     commentRepository.countTopLevelByPost(postId),
   ]);
 
   return {
-    comments,
+    comments: decorateWithLikeStatus(rawComments, authUser),
     pagination: {
       page,
       limit,
